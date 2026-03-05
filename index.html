@@ -6,136 +6,146 @@
 <title>BenzeneFi — Crypto Prediction Markets</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
 <style>
-:root{--bg:#0a0a0f;--card:#13131a;--card2:#1a1a24;--border:#2a2a3a;--accent:#00d4aa;--accent2:#0099ff;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--text:#e8e8f0;--muted:#6b7280;--usdc:#2775ca;}
+:root{--bg:#0a0a0f;--card:#13131a;--card2:#1a1a24;--border:#2a2a3a;--accent:#00d4aa;--accent2:#0099ff;--green:#22c55e;--red:#ef4444;--yellow:#f59e0b;--text:#e8e8f0;--muted:#6b7280;--usdc:#2775ca;--sepolia:#627EEA;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden;}
 #app{display:flex;flex-direction:column;min-height:100vh;}
-.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:80px;}
+.screen{display:none;flex-direction:column;min-height:100vh;padding-bottom:84px;}
 .screen.active{display:flex;}
-.topbar{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
-.topbar-logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#00d4aa,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.topbar-right{display:flex;align-items:center;gap:8px;}
-.wallet-badge{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;font-size:11px;font-weight:600;color:var(--accent);cursor:pointer;}
-.usdc-badge{background:rgba(0,212,170,.12);border:1px solid rgba(0,212,170,.25);border-radius:20px;padding:6px 10px;font-size:11px;font-weight:700;color:var(--accent);}
-.bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.96);backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 14px;cursor:pointer;gap:4px;transition:all .2s;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(10,10,15,.95);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-size:18px;font-weight:900;background:linear-gradient(135deg,#00d4aa,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.topbar-right{display:flex;align-items:center;gap:7px;}
+.badge{border-radius:20px;padding:5px 11px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;border:1px solid transparent;}
+.badge-g{background:rgba(0,212,170,.1);border-color:rgba(0,212,170,.22);color:var(--accent);}
+.badge-d{background:var(--card2);border-color:var(--border);color:var(--accent);}
+.badge-mm{background:rgba(246,133,27,.1);border-color:rgba(246,133,27,.22);color:#f6851b;}
+.badge-sep{background:rgba(98,126,234,.1);border-color:rgba(98,126,234,.22);color:#8fa8f5;}
+.bottomnav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(10,10,15,.97);backdrop-filter:blur(14px);border-top:1px solid var(--border);display:flex;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 16px;cursor:pointer;gap:3px;}
 .nav-item svg{width:20px;height:20px;stroke:var(--muted);transition:stroke .2s;}
-.nav-item span{font-size:10px;color:var(--muted);font-weight:500;}
+.nav-item span{font-size:10px;color:var(--muted);font-weight:500;transition:color .2s;}
 .nav-item.active svg{stroke:var(--accent);}
 .nav-item.active span{color:var(--accent);}
-.btn{border:none;border-radius:12px;padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;}
+.btn{border:none;border-radius:12px;padding:13px 18px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
 .btn-primary{background:linear-gradient(135deg,#00d4aa,#0099ff);color:#fff;}
-.btn-primary:active{opacity:.9;}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text);}
-.btn-sm{padding:9px 14px;font-size:13px;width:auto;border-radius:8px;}
+.btn-mm{background:linear-gradient(135deg,#f6851b,#e2761b);color:#fff;}
+.btn-sep{background:linear-gradient(135deg,#627EEA,#4a5fd4);color:#fff;}
 .btn-usdc{background:linear-gradient(135deg,#2775ca,#1a5fa8);color:#fff;}
-.btn-mm{background:linear-gradient(135deg,#f6851b,#e2761b);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;}
+.btn-danger{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.22);color:var(--red);}
+.btn-sm{padding:9px 14px;font-size:13px;width:auto;border-radius:9px;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;}
 input,textarea{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:'Inter',sans-serif;width:100%;outline:none;transition:border-color .2s;}
 input:focus,textarea:focus{border-color:var(--accent);}
-label{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px;display:block;}
+label{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.5px;}
 .field{margin-bottom:14px;}
-.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
-.tag-live{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.2);}
-.tag-cat{background:rgba(0,212,170,.1);color:var(--accent);border:1px solid rgba(0,212,170,.18);}
+.otp-wrap{display:flex;gap:8px;justify-content:center;margin:6px 0 16px;}
+.otp-d{width:44px;height:54px;text-align:center;font-size:22px;font-weight:900;border-radius:12px;background:var(--card2);border:2px solid var(--border);color:var(--text);padding:0;transition:border-color .2s;}
+.otp-d:focus{border-color:var(--accent);}
+.tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.tag-live{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.18);}
+.tag-cat{background:rgba(0,212,170,.08);color:var(--accent);border:1px solid rgba(0,212,170,.15);}
 .prob-bar{height:6px;border-radius:3px;background:var(--card2);overflow:hidden;margin:8px 0;}
 .prob-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent),#0099ff);}
-/* AUTH */
-#screen-auth{background:var(--bg);align-items:center;justify-content:center;padding:24px;padding-bottom:24px;}
-.auth-logo-wrap{text-align:center;margin-bottom:24px;}
-.auth-logo{font-size:36px;font-weight:900;background:linear-gradient(135deg,#00d4aa,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-.auth-sub{font-size:20px;font-weight:700;color:var(--text);margin-top:2px;}
-.auth-tagline{color:var(--muted);font-size:13px;margin-top:6px;}
-.benzene-ring{font-size:32px;margin-bottom:4px;}
-.auth-box{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px;width:100%;max-width:400px;}
-.auth-tabs{display:flex;background:var(--card2);border-radius:10px;padding:4px;margin-bottom:18px;}
-.auth-tab{flex:1;text-align:center;padding:8px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s;}
+#screen-auth{background:var(--bg);align-items:center;justify-content:center;padding:20px;padding-bottom:20px;min-height:100vh;}
+.auth-hero{text-align:center;margin-bottom:20px;}
+.auth-hex{font-size:48px;filter:drop-shadow(0 0 24px rgba(0,212,170,.45));}
+.auth-name{font-size:32px;font-weight:900;background:linear-gradient(135deg,#00d4aa,#0099ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-1px;margin-top:2px;}
+.auth-tag{color:var(--muted);font-size:13px;margin-top:5px;}
+.auth-box{background:var(--card);border:1px solid var(--border);border-radius:22px;padding:22px;width:100%;max-width:400px;box-shadow:0 24px 80px rgba(0,0,0,.55);}
+.auth-tabs{display:flex;background:var(--card2);border-radius:10px;padding:3px;margin-bottom:20px;}
+.auth-tab{flex:1;text-align:center;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted);transition:all .2s;}
 .auth-tab.active{background:linear-gradient(135deg,#00d4aa,#0099ff);color:#fff;}
 .divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--muted);font-size:12px;}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
-/* MARKETS */
-.market-card{cursor:pointer;transition:all .2s;margin-bottom:12px;}
-.market-card:active{transform:scale(.98);}
+.step-row{display:flex;align-items:center;gap:6px;margin-bottom:14px;}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:background .3s;}
+.step-dot.on{background:var(--accent);}
+.step-dot.done{background:var(--green);}
+.step-txt{font-size:12px;color:var(--muted);font-weight:600;}
+.notice{background:rgba(0,212,170,.05);border:1px solid rgba(0,212,170,.14);border-radius:10px;padding:10px 13px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.6;}
+.notice-warn{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.2);color:var(--yellow);}
+.notice-err{background:rgba(239,68,68,.05);border-color:rgba(239,68,68,.2);color:var(--red);}
+.sep-banner{background:rgba(98,126,234,.07);border:1px solid rgba(98,126,234,.18);border-radius:10px;padding:10px 14px;font-size:12px;color:#8fa8f5;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.market-card{cursor:pointer;margin-bottom:12px;transition:border-color .2s,transform .12s;}
+.market-card:active{transform:scale(.985);}
+.market-card:hover{border-color:rgba(0,212,170,.3);}
 .market-title{font-size:15px;font-weight:600;line-height:1.4;margin-bottom:10px;}
-.market-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.market-vol{font-size:11px;color:var(--muted);}
+.market-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.mvol{font-size:11px;color:var(--muted);}
 .market-odds{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
 .odds-btn{text-align:center;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;}
-.odds-yes{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2);}
-.odds-no{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.odds-yes{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.18);}
+.odds-no{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.18);}
 .page-content{flex:1;padding:16px;max-width:600px;width:100%;margin:0 auto;}
-/* LEADERBOARD */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.stat-box{background:var(--card2);border-radius:12px;padding:12px;text-align:center;}
+.stat-val{font-size:18px;font-weight:800;}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;}
+.search-bar{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.search-bar input{background:transparent;border:none;padding:0;font-size:14px;}
+.search-bar svg{width:16px;height:16px;stroke:var(--muted);flex-shrink:0;}
+.chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;}
+.chips::-webkit-scrollbar{display:none;}
+.chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--muted);white-space:nowrap;transition:all .2s;}
+.chip.active{background:linear-gradient(135deg,#00d4aa,#0099ff);border-color:transparent;color:#fff;}
+.bet-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.bet-opt{padding:14px;border-radius:12px;text-align:center;cursor:pointer;border:2px solid var(--border);transition:all .2s;}
+.bet-opt.yes.sel{border-color:var(--green);background:rgba(34,197,94,.07);}
+.bet-opt.no.sel{border-color:var(--red);background:rgba(239,68,68,.07);}
+.bo-lbl{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.bo-pct{font-size:22px;font-weight:800;}
+.bet-opt.yes .bo-pct{color:var(--green);}
+.bet-opt.no .bo-pct{color:var(--red);}
 .lb-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
-.lb-rank{font-size:15px;font-weight:800;width:28px;text-align:center;}
-.lb-avatar{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.lb-rank{font-size:15px;font-weight:800;width:26px;text-align:center;}
+.lb-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
 .lb-info{flex:1;min-width:0;}
-.lb-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lb-name{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lb-addr{font-size:11px;color:var(--muted);}
-.lb-usdc{font-size:14px;font-weight:700;color:var(--accent);}
-.lb-wins{font-size:11px;color:var(--muted);}
-/* WALLET */
-.wallet-card{background:linear-gradient(135deg,#0a1a16,#0a1520);border:1px solid rgba(0,212,170,.25);border-radius:20px;padding:20px;margin-bottom:14px;text-align:center;}
-.wallet-addr{font-family:monospace;font-size:11px;color:var(--accent2);background:rgba(0,153,255,.08);padding:8px 10px;border-radius:8px;word-break:break-all;margin-top:8px;}
-.wallet-balance-big{font-size:34px;font-weight:800;color:var(--accent);margin:10px 0 4px;}
-.copy-btn{background:rgba(0,212,170,.1);border:1px solid rgba(0,212,170,.2);color:var(--accent);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-top:10px;}
+.wallet-hero{background:linear-gradient(135deg,#071410,#071520);border:1px solid rgba(0,212,170,.2);border-radius:20px;padding:22px;margin-bottom:14px;text-align:center;position:relative;overflow:hidden;}
+.wallet-hero::before{content:'⬡';position:absolute;right:-8px;top:-8px;font-size:110px;opacity:.04;color:var(--accent);}
+.wbal{font-size:36px;font-weight:900;color:var(--accent);margin:10px 0 2px;}
+.waddr{font-family:monospace;font-size:11px;color:var(--accent2);background:rgba(0,153,255,.07);padding:8px 10px;border-radius:8px;word-break:break-all;margin-top:8px;}
+.copybtn{background:rgba(0,212,170,.08);border:1px solid rgba(0,212,170,.18);color:var(--accent);border-radius:8px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;margin-top:10px;display:inline-block;}
 .ref-box{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:14px;}
 .ref-link{font-family:monospace;font-size:11px;color:var(--accent);word-break:break-all;margin:8px 0;}
-.ref-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+.ref-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
 .ref-stat{background:var(--card);border-radius:10px;padding:12px;text-align:center;}
-.ref-stat-val{font-size:22px;font-weight:800;color:var(--accent);}
-.ref-stat-label{font-size:11px;color:var(--muted);}
-/* TOAST */
-#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;transition:transform .3s ease;white-space:nowrap;max-width:90vw;text-align:center;}
+.ref-stat-v{font-size:22px;font-weight:800;color:var(--accent);}
+.ref-stat-l{font-size:11px;color:var(--muted);}
+.net-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.net-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--muted);}
+.net-btn.active{border-color:var(--usdc);color:#5b9bd5;background:rgba(39,117,202,.1);}
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-100px);z-index:9999;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 22px;font-size:13px;font-weight:600;transition:transform .3s cubic-bezier(.34,1.56,.64,1);max-width:92vw;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.5);}
 #toast.show{transform:translateX(-50%) translateY(0);}
 #toast.success{border-color:var(--green);color:var(--green);}
 #toast.error{border-color:var(--red);color:var(--red);}
 #toast.info{border-color:var(--accent);color:var(--accent);}
-/* MODALS */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;display:none;align-items:flex-end;justify-content:center;}
+#toast.warn{border-color:var(--yellow);color:var(--yellow);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:500;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
 .modal-overlay.open{display:flex;}
-.modal-sheet{background:var(--card);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;}
+.modal-sheet{background:var(--card);border-radius:24px 24px 0 0;padding:24px;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;}
 .modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;}
-.comment{padding:10px 0;border-bottom:1px solid var(--border);}
-.comment-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
-.comment-user{font-size:12px;font-weight:600;color:var(--accent);}
-.comment-time{font-size:11px;color:var(--muted);}
-.comment-text{font-size:13px;line-height:1.5;}
-.flex-between{display:flex;align-items:center;justify-content:space-between;}
-.text-muted{color:var(--muted);font-size:13px;}
-.text-green{color:var(--green);}
-.text-red{color:var(--red);}
-.text-accent{color:var(--accent);}
-.mt-8{margin-top:8px;}
-.mt-12{margin-top:12px;}
-.mt-16{margin-top:16px;}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.spinner{display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
-.stat-box{background:var(--card2);border-radius:12px;padding:12px;text-align:center;}
-.stat-val{font-size:18px;font-weight:800;}
-.stat-label{font-size:10px;color:var(--muted);margin-top:2px;}
-.search-bar{background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-.search-bar input{background:transparent;border:none;padding:0;font-size:14px;}
-.search-bar svg{width:16px;height:16px;stroke:var(--muted);flex-shrink:0;}
-.filter-chips{display:flex;gap:8px;overflow-x:auto;margin-bottom:14px;scrollbar-width:none;}
-.filter-chips::-webkit-scrollbar{display:none;}
-.chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--muted);white-space:nowrap;}
-.chip.active{background:linear-gradient(135deg,#00d4aa,#0099ff);border-color:transparent;color:#fff;}
-.bet-choice{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
-.bet-option{padding:14px;border-radius:12px;text-align:center;cursor:pointer;border:2px solid var(--border);transition:all .2s;}
-.bet-option.yes.selected{border-color:var(--green);background:rgba(34,197,94,.08);}
-.bet-option.no.selected{border-color:var(--red);background:rgba(239,68,68,.08);}
-.bet-opt-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
-.bet-opt-pct{font-size:22px;font-weight:800;}
-.bet-option.yes .bet-opt-pct{color:var(--green);}
-.bet-option.no .bet-opt-pct{color:var(--red);}
-.notice{background:rgba(0,212,170,.06);border:1px solid rgba(0,212,170,.15);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--accent);margin-bottom:12px;line-height:1.5;}
-.network-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
-.net-btn{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card2);color:var(--muted);}
-.net-btn.active{border-color:var(--usdc);color:#5b9bd5;background:rgba(39,117,202,.1);}
+.cmt{padding:10px 0;border-bottom:1px solid var(--border);}
+.cmt-hdr{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.cmt-user{font-size:12px;font-weight:700;color:var(--accent);}
+.cmt-time{font-size:11px;color:var(--muted);}
+.cmt-txt{font-size:13px;line-height:1.5;}
+.fb{display:flex;align-items:center;justify-content:space-between;}
+.tg{color:var(--green);}
+.tr{color:var(--red);}
+.ta{color:var(--accent);}
+.ty{color:var(--yellow);}
+.mt8{margin-top:8px;}
+.mt12{margin-top:12px;}
+.mt16{margin-top:16px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
 ::-webkit-scrollbar{width:3px;}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
 </style>
@@ -144,153 +154,100 @@ label{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:6px;displa
 <div id="app">
 <div id="toast"></div>
 
-<!-- ===== AUTH ===== -->
+<!-- AUTH -->
 <div id="screen-auth" class="screen active">
-  <div class="auth-logo-wrap">
-    <div class="benzene-ring">⬡</div>
-    <div class="auth-logo">BenzeneFi</div>
-    <div class="auth-sub">Prediction Markets</div>
-    <div class="auth-tagline">Predict crypto. Earn USDC. Win big.</div>
+  <div class="auth-hero">
+    <div class="auth-hex">⬡</div>
+    <div class="auth-name">BenzeneFi</div>
+    <div class="auth-tag">Crypto Prediction Markets · Earn USDC</div>
   </div>
   <div class="auth-box">
     <div class="auth-tabs">
-      <div class="auth-tab active" onclick="switchTab('login')">Login</div>
-      <div class="auth-tab" onclick="switchTab('signup')">Sign Up</div>
+      <div class="auth-tab active" id="abt-login" onclick="switchTab('login')">Login</div>
+      <div class="auth-tab" id="abt-signup" onclick="switchTab('signup')">Sign Up</div>
     </div>
+
+    <!-- LOGIN -->
     <div id="tab-login">
-      <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="you@email.com"/></div>
-      <div class="field"><label>Password</label><input type="password" id="login-pass" placeholder="••••••••"/></div>
-      <button class="btn btn-primary" onclick="doLogin()">Login to BenzeneFi</button>
-      <div class="divider">or connect wallet</div>
-      <button class="btn btn-mm" onclick="connectMM()">
-        <svg width="20" height="20" viewBox="0 0 318 239" fill="none"><path d="M274.1 35.5l-99.7 74.1 18.8-44.1z" fill="#E2761B"/><path d="M44 35.5l98.9 74.8-17.9-44.8z" fill="#E4761B"/><path d="M238 174.5l-26.5 40.6 56.7 15.6 16.3-55.4z" fill="#E4761B"/><path d="M34 175.3l16.2 55.4 56.7-15.6-26.4-40.6z" fill="#E4761B"/></svg>
-        Sign In with MetaMask
-      </button>
+      <div id="lstep1">
+        <div class="step-row"><div class="step-dot on"></div><div class="step-dot"></div><div class="step-txt">Enter your email</div></div>
+        <div class="field"><label>Email Address</label><input type="email" id="l-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')sendLoginCode()"/></div>
+        <button class="btn btn-primary" id="btn-lsend" onclick="sendLoginCode()">Send 6-Digit Code</button>
+        <div class="divider">or use wallet</div>
+        <button class="btn btn-mm" onclick="connectMM()">
+          <svg width="18" height="18" viewBox="0 0 35 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M32.958 1L19.47 10.89l2.45-5.8z" fill="#E17726" stroke="#E17726" stroke-width=".25"/><path d="M2.042 1l13.37 9.97-2.33-5.88zM27.23 23.3l-3.59 5.49 7.68 2.12 2.2-7.48zM1.487 23.43l2.19 7.48 7.67-2.12-3.58-5.49z" fill="#E27625" stroke="#E27625" stroke-width=".25"/><path d="M10.96 14.45l-2.13 3.22 7.6.34-.26-8.17zM24.04 14.45l-5.31-4.71-.17 8.27 7.59-.34zM11.347 28.79l4.57-2.21-3.94-3.08zM19.083 26.58l4.57 2.21-.64-5.29z" fill="#E27625" stroke="#E27625" stroke-width=".25"/></svg>
+          Sign In with MetaMask
+        </button>
+      </div>
+      <div id="lstep2" style="display:none;">
+        <div class="step-row"><div class="step-dot done"></div><div class="step-dot on"></div><div class="step-txt">Check your email for the code</div></div>
+        <div class="notice" id="lcode-notice">Code sent!</div>
+        <div class="otp-wrap">
+          <input type="tel" class="otp-d" id="l0" maxlength="1" oninput="oFwd(this,0,'l')" onkeydown="oBk(event,0,'l')"/>
+          <input type="tel" class="otp-d" id="l1" maxlength="1" oninput="oFwd(this,1,'l')" onkeydown="oBk(event,1,'l')"/>
+          <input type="tel" class="otp-d" id="l2" maxlength="1" oninput="oFwd(this,2,'l')" onkeydown="oBk(event,2,'l')"/>
+          <input type="tel" class="otp-d" id="l3" maxlength="1" oninput="oFwd(this,3,'l')" onkeydown="oBk(event,3,'l')"/>
+          <input type="tel" class="otp-d" id="l4" maxlength="1" oninput="oFwd(this,4,'l')" onkeydown="oBk(event,4,'l')"/>
+          <input type="tel" class="otp-d" id="l5" maxlength="1" oninput="oFwd(this,5,'l')" onkeydown="oBk(event,5,'l')"/>
+        </div>
+        <button class="btn btn-primary" id="btn-lverify" onclick="verifyLoginCode()">Verify & Login</button>
+        <button class="btn btn-outline mt8" style="margin-top:10px;" onclick="backLogin()">← Back</button>
+      </div>
     </div>
-    <div id="tab-signup" style="display:none">
-      <div class="field"><label>Username</label><input type="text" id="su-name" placeholder="CryptoWizard"/></div>
-      <div class="field"><label>Email</label><input type="email" id="su-email" placeholder="you@email.com"/></div>
-      <div class="field"><label>Password</label><input type="password" id="su-pass" placeholder="Min 8 characters"/></div>
-      <div class="field"><label>Referral Code (optional)</label><input type="text" id="su-ref" placeholder="Enter referral code"/></div>
-      <button class="btn btn-primary" onclick="doSignup()">Join BenzeneFi → Get $1000 USDC</button>
-      <div class="divider">or connect wallet</div>
-      <button class="btn btn-mm" onclick="connectMM()">
-        <svg width="20" height="20" viewBox="0 0 318 239" fill="none"><path d="M274.1 35.5l-99.7 74.1 18.8-44.1z" fill="#E2761B"/><path d="M44 35.5l98.9 74.8-17.9-44.8z" fill="#E4761B"/></svg>
-        Sign Up with MetaMask
-      </button>
+
+    <!-- SIGNUP -->
+    <div id="tab-signup" style="display:none;">
+      <div id="sstep1">
+        <div class="step-row"><div class="step-dot on"></div><div class="step-dot"></div><div class="step-txt">Your details</div></div>
+        <div class="field"><label>Username</label><input type="text" id="s-name" placeholder="CryptoWizard"/></div>
+        <div class="field"><label>Email Address</label><input type="email" id="s-email" placeholder="you@email.com"/></div>
+        <div class="field"><label>Referral Code (optional)</label><input type="text" id="s-ref" placeholder="Earn bonus USDC"/></div>
+        <button class="btn btn-primary" id="btn-ssend" onclick="sendSignupCode()">Send Verification Code →</button>
+        <div class="divider">or use wallet</div>
+        <button class="btn btn-mm" onclick="connectMM()">
+          <svg width="18" height="18" viewBox="0 0 35 33" fill="none"><path d="M32.958 1L19.47 10.89l2.45-5.8z" fill="#E17726" stroke="#E17726" stroke-width=".25"/></svg>
+          Sign Up with MetaMask
+        </button>
+      </div>
+      <div id="sstep2" style="display:none;">
+        <div class="step-row"><div class="step-dot done"></div><div class="step-dot on"></div><div class="step-txt">Verify your email</div></div>
+        <div class="notice" id="scode-notice">Code sent — check your inbox!</div>
+        <div class="otp-wrap">
+          <input type="tel" class="otp-d" id="s0" maxlength="1" oninput="oFwd(this,0,'s')" onkeydown="oBk(event,0,'s')"/>
+          <input type="tel" class="otp-d" id="s1" maxlength="1" oninput="oFwd(this,1,'s')" onkeydown="oBk(event,1,'s')"/>
+          <input type="tel" class="otp-d" id="s2" maxlength="1" oninput="oFwd(this,2,'s')" onkeydown="oBk(event,2,'s')"/>
+          <input type="tel" class="otp-d" id="s3" maxlength="1" oninput="oFwd(this,3,'s')" onkeydown="oBk(event,3,'s')"/>
+          <input type="tel" class="otp-d" id="s4" maxlength="1" oninput="oFwd(this,4,'s')" onkeydown="oBk(event,4,'s')"/>
+          <input type="tel" class="otp-d" id="s5" maxlength="1" oninput="oFwd(this,5,'s')" onkeydown="oBk(event,5,'s')"/>
+        </div>
+        <button class="btn btn-primary" id="btn-sverify" onclick="verifySignupCode()">✅ Create My Account</button>
+        <button class="btn btn-outline" style="margin-top:10px;" onclick="backSignup()">← Back</button>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ===== MARKETS ===== -->
+<!-- MARKETS -->
 <div id="screen-markets" class="screen">
   <div class="topbar">
     <div class="topbar-logo">⬡ BenzeneFi</div>
     <div class="topbar-right">
-      <div class="usdc-badge" id="top-bal">$0 USDC</div>
-      <div class="wallet-badge" onclick="showScreen('wallet')">💰 Wallet</div>
+      <div class="badge badge-g" id="top-bal">$0 USDC</div>
+      <div class="badge badge-d" onclick="showScreen('wallet')">💰</div>
     </div>
   </div>
   <div class="page-content">
     <div class="stat-row">
-      <div class="stat-box"><div class="stat-val text-accent">12</div><div class="stat-label">Live Markets</div></div>
-      <div class="stat-box"><div class="stat-val text-green">$48K</div><div class="stat-label">24h Volume</div></div>
-      <div class="stat-box"><div class="stat-val text-accent">231</div><div class="stat-label">Traders</div></div>
+      <div class="stat-box"><div class="stat-val ta">12</div><div class="stat-lbl">Live Markets</div></div>
+      <div class="stat-box"><div class="stat-val tg">$48K</div><div class="stat-lbl">24h Volume</div></div>
+      <div class="stat-box"><div class="stat-val ta">231</div><div class="stat-lbl">Traders</div></div>
     </div>
     <div class="search-bar">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" placeholder="Search BenzeneFi markets..." oninput="filterM(this.value)"/>
+      <input type="text" placeholder="Search markets..." oninput="filterM(this.value)" style="border:none;background:transparent;padding:0;"/>
     </div>
-    <div class="filter-chips">
+    <div class="chips">
       <div class="chip active" onclick="setF('All',this)">All</div>
       <div class="chip" onclick="setF('BTC',this)">BTC</div>
       <div class="chip" onclick="setF('ETH',this)">ETH</div>
-      <div class="chip" onclick="setF('SOL',this)">SOL</div>
-      <div class="chip" onclick="setF('Altcoins',this)">Altcoins</div>
-      <div class="chip" onclick="setF('DeFi',this)">DeFi</div>
-      <div class="chip" onclick="setF('NFT',this)">NFT</div>
-    </div>
-    <div id="markets-list"><div style="text-align:center;padding:30px;"><div class="spinner"></div></div></div>
-  </div>
-</div>
-
-<!-- ===== LEADERBOARD ===== -->
-<div id="screen-leaderboard" class="screen">
-  <div class="topbar">
-    <div class="topbar-logo">🏆 Leaderboard</div>
-    <div class="topbar-right"><div class="usdc-badge" id="lb-bal">$0 USDC</div></div>
-  </div>
-  <div class="page-content">
-    <div class="notice">🏆 Top BenzeneFi traders earn bonus USDC monthly! Rankings update hourly.</div>
-    <div id="lb-list"><div style="text-align:center;padding:30px;"><div class="spinner"></div></div></div>
-  </div>
-</div>
-
-<!-- ===== WALLET ===== -->
-<div id="screen-wallet" class="screen">
-  <div class="topbar">
-    <div class="topbar-logo">💰 My Wallet</div>
-    <div class="topbar-right"><div class="wallet-badge" id="mm-status" onclick="connectMM()">🦊 Connect MetaMask</div></div>
-  </div>
-  <div class="page-content">
-    <div class="wallet-card">
-      <div style="font-size:12px;color:var(--muted);">BenzeneFi Custodial Wallet</div>
-      <div class="wallet-balance-big" id="w-balance">$0.00</div>
-      <div style="font-size:12px;color:var(--muted);">USDC Balance</div>
-      <div class="wallet-addr" id="w-addr">Generating your wallet...</div>
-      <button class="copy-btn" onclick="copyAddr()">📋 Copy Address</button>
-    </div>
-    <div class="card mt-12">
-      <div style="font-weight:700;margin-bottom:12px;font-size:15px;">📥 Deposit USDC</div>
-      <div class="notice">Send USDC to your BenzeneFi wallet address above.</div>
-      <div class="network-chips">
-        <div class="net-btn active">Ethereum</div>
-        <div class="net-btn" onclick="selNet(this)">Polygon</div>
-        <div class="net-btn" onclick="selNet(this)">Base</div>
-        <div class="net-btn" onclick="selNet(this)">Arbitrum</div>
-        <div class="net-btn" onclick="selNet(this)">Solana</div>
-      </div>
-      <div class="grid-2">
-        <button class="btn btn-usdc" style="padding:11px;" onclick="openModal('dep-modal')">📥 Deposit</button>
-        <button class="btn btn-outline" style="padding:11px;" onclick="openModal('wdraw-modal')">📤 Withdraw</button>
-      </div>
-    </div>
-    <div class="card mt-12">
-      <div class="flex-between" style="margin-bottom:12px;">
-        <span style="font-weight:700;">💎 BenzeneFi Referrals</span>
-        <span class="tag tag-cat">+$10 per referral</span>
-      </div>
-      <div class="ref-box">
-        <div class="text-muted">Your unique BenzeneFi referral link:</div>
-        <div class="ref-link" id="ref-link">Loading...</div>
-        <button class="copy-btn" onclick="copyRef()">📋 Copy & Share Link</button>
-      </div>
-      <div class="ref-stats">
-        <div class="ref-stat"><div class="ref-stat-val" id="ref-cnt">0</div><div class="ref-stat-label">Referred Users</div></div>
-        <div class="ref-stat"><div class="ref-stat-val" id="ref-earn">$0</div><div class="ref-stat-label">USDC Earned</div></div>
-      </div>
-    </div>
-    <div class="card mt-12">
-      <div style="font-weight:700;margin-bottom:10px;">📊 Recent Transactions</div>
-      <div id="tx-list"><div class="text-muted">No transactions yet.</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== PROFILE ===== -->
-<div id="screen-profile" class="screen">
-  <div class="topbar">
-    <div class="topbar-logo">👤 Profile</div>
-    <div class="topbar-right"><button class="btn btn-outline btn-sm" onclick="doLogout()">Logout</button></div>
-  </div>
-  <div class="page-content">
-    <div class="wallet-card" style="text-align:left;">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
-        <div id="p-avatar" style="width:56px;height:56px;border-radius:50%;background:rgba(0,212,170,.15);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;flex-shrink:0;">U</div>
-        <div>
-          <div style="font-size:20px;font-weight:800;" id="p-name">Loading...</div>
-          <div style="font-size:12px;color:var(--muted);" id="p-email"></div>
-        </div>
-      </div>
-      <div class="grid-2">
-        <div><div style="font-size:11px;color:var(--muted);">MetaMask</div><div style="font-size:12px;font-weight:600;color:#f6851b;" id="p-mm">Not linked</div></div
+      <div class="chip" onclick="setF
