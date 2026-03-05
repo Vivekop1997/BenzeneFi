@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TraceFi</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{--bg:#07090f;--s:#0d1117;--s2:#131920;--b:#1c2a38;--a:#00e5ff;--a2:#7b61ff;--a3:#ff6b6b;--g:#00ff88;--t:#e2eaf4;--m:#4a6a85}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t);font-family:'Syne',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,229,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.w{max-width:1120px;margin:0 auto;padding:0 20px;position:relative;z-index:1}
+header{padding:26px 0 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--b);margin-bottom:32px;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:9px;font-size:1.4rem;font-weight:800;letter-spacing:-1px}
+.li{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--a),var(--a2));display:flex;align-items:center;justify-content:center;box-shadow:0 0 16px rgba(0,229,255,.3)}
+.lt{color:var(--a)}.lf{color:#fff}
+.cbadges{display:flex;gap:6px;flex-wrap:wrap}
+.cb{padding:4px 10px;border-radius:20px;font-size:.63rem;font-family:'Space Mono',monospace;font-weight:700;border:1px solid;display:flex;align-items:center;gap:4px}
+.ceth{color:#a78bfa;border-color:rgba(167,139,250,.3);background:rgba(167,139,250,.07)}
+.carb{color:#12aaff;border-color:rgba(18,170,255,.3);background:rgba(18,170,255,.07)}
+.cbase{color:#3b82f6;border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.07)}
+.cbsc{color:#f0b90b;border-color:rgba(240,185,11,.3);background:rgba(240,185,11,.07)}
+.dot{width:5px;height:5px;border-radius:50%;animation:bl 2s infinite}
+.deth{background:#a78bfa}.darb{background:#12aaff}.dbase{background:#3b82f6}.dbsc{background:#f0b90b}
+@keyframes bl{0%,100%{opacity:1}50%{opacity:.3}}
+.slbl{font-size:.68rem;color:var(--m);letter-spacing:2.5px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:11px}
+.sbox{display:flex;gap:9px;background:var(--s);border:1px solid var(--b);border-radius:13px;padding:7px 7px 7px 20px;transition:border-color .2s,box-shadow .2s;margin-bottom:10px}
+.sbox:focus-within{border-color:var(--a);box-shadow:0 0 0 3px rgba(0,229,255,.09)}
+.sbox input{flex:1;background:none;border:none;outline:none;color:var(--t);font-family:'Space Mono',monospace;font-size:.83rem}
+.sbox input::placeholder{color:var(--m)}
+.btrack{background:linear-gradient(135deg,var(--a),#0099cc);color:#000;border:none;padding:12px 24px;border-radius:8px;font-family:'Syne',sans-serif;font-weight:800;font-size:.88rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btrack:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btrack:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.chips{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:36px}
+.chips span{font-size:.68rem;color:var(--m)}
+.chip{background:var(--s2);border:1px solid var(--b);color:var(--m);padding:4px 10px;border-radius:6px;font-family:'Space Mono',monospace;font-size:.66rem;cursor:pointer;transition:all .2s}
+.chip:hover{color:var(--a);border-color:rgba(0,229,255,.35)}
+#loading{display:none;text-align:center;padding:80px 0}
+.spin{width:48px;height:48px;border:3px solid var(--b);border-top-color:var(--a);border-radius:50%;animation:sp .75s linear infinite;margin:0 auto 16px}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loading p{color:var(--m);font-size:.83rem;font-family:'Space Mono',monospace}
+#prog{font-size:.7rem;color:var(--a);font-family:'Space Mono',monospace;margin-top:8px;min-height:18px}
+#err{display:none;background:rgba(255,107,107,.07);border:1px solid rgba(255,107,107,.25);border-radius:10px;padding:15px 19px;color:var(--a3);font-size:.8rem;margin-bottom:22px;font-family:'Space Mono',monospace;line-height:1.7}
+#dash{display:none;animation:rise .4s ease}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.wcard{background:var(--s);border:1px solid var(--b);border-radius:16px;padding:26px 30px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;position:relative;overflow:hidden}
+.wcard::after{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(0,229,255,.07),transparent 70%);pointer-events:none}
+.wl{display:flex;flex-direction:column;gap:4px}
+.wtag{font-size:.65rem;color:var(--m);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace}
+.wens{font-size:1.25rem;font-weight:800;color:var(--a)}
+.waddr{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--m);word-break:break-all;margin-top:3px}
+.wr{text-align:right}
+.nw{font-size:2.2rem;font-weight:800;line-height:1;background:linear-gradient(135deg,#fff,var(--a));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nwl{font-size:.68rem;color:var(--m);margin-top:4px;font-family:'Space Mono',monospace}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:28px}
+.stat{background:var(--s);border:1px solid var(--b);border-radius:12px;padding:16px 18px;transition:all .2s}
+.stat:hover{border-color:var(--a);transform:translateY(-2px)}
+.sv{font-size:1.35rem;font-weight:800;line-height:1;margin-bottom:4px}
+.sl{font-size:.63rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--m)}
+.c1{color:var(--a)}.c2{color:var(--a2)}.c3{color:var(--g)}.c4{color:#f0b90b}.c5{color:var(--a3)}.c6{color:#3b82f6}
+.tabs{display:flex;gap:3px;background:var(--s);border:1px solid var(--b);border-radius:10px;padding:4px;margin-bottom:22px;width:fit-content;flex-wrap:wrap}
+.tab{padding:9px 16px;border-radius:7px;font-weight:700;font-size:.8rem;cursor:pointer;border:none;background:none;color:var(--m);transition:all .2s;display:flex;align-items:center;gap:6px;font-family:'Syne',sans-serif}
+.tab:hover{color:var(--t)}
+.tab.active{background:var(--a);color:#000}
+.tab.active .bdg{background:rgba(0,0,0,.2);color:#000}
+.bdg{background:var(--s2);border-radius:10px;padding:1px 7px;font-size:.66rem;color:var(--m)}
+.tw{background:var(--s);border:1px solid var(--b);border-radius:14px;overflow:hidden}
+.th{padding:12px 20px;border-bottom:1px solid var(--b);font-size:.66rem;color:var(--m);text-transform:uppercase;letter-spacing:1.5px;font-family:'Space Mono',monospace;font-weight:700;display:grid}
+.tr{padding:14px 20px;border-bottom:1px solid rgba(28,42,56,.6);display:grid;align-items:center;transition:background .15s;font-size:.85rem}
+.tr:last-child{border-bottom:none}
+.tr:hover{background:rgba(0,229,255,.025)}
+.gt{grid-template-columns:2.5fr 1.5fr 1fr 1fr}
+.gx{grid-template-columns:1fr 1.2fr 1fr 1fr 1fr}
+.iw{width:36px;height:36px;border-radius:50%;background:var(--s2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;overflow:hidden;margin-right:11px;font-weight:800;color:var(--a)}
+.iw img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.ac{display:flex;align-items:center}
+.an{font-weight:700;font-size:.87rem}
+.as2{font-size:.7rem;color:var(--m);font-family:'Space Mono',monospace;margin-top:2px}
+.mono{font-family:'Space Mono',monospace;font-size:.76rem}
+.pos{color:var(--g)}.neg{color:var(--a3)}.neu{color:var(--m)}
+.bi{background:rgba(0,255,136,.1);color:var(--g);border:1px solid rgba(0,255,136,.2);padding:2px 8px;border-radius:4px;font-size:.66rem;font-family:'Space Mono',monospace;font-weight:700}
+.bo{background:rgba(255,107,107,.1);color:var(--a3);border:1px solid rgba(255,107,107,.2);padding:2px 8px;border-radius:4px;font-size:.66rem;font-family:'Space Mono',monospace;font-weight:700}
+.bc{background:rgba(0,229,255,.08);color:var(--a);border:1px solid rgba(0,229,255,.18);padding:2px 8px;border-radius:4px;font-size:.66rem;font-family:'Space Mono',monospace;font-weight:700}
+.ctag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:.58rem;font-family:'Space Mono',monospace;font-weight:700;margin-left:5px;vertical-align:middle}
+.t-eth{background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.22)}
+.t-arb{background:rgba(18,170,255,.1);color:#12aaff;border:1px solid rgba(18,170,255,.2)}
+.t-base{background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2)}
+.t-bsc{background:rgba(240,185,11,.1);color:#f0b90b;border:1px solid rgba(240,185,11,.2)}
+.txl{color:var(--a);text-decoration:none;font-family:'Space Mono',monospace;font-size:.72rem}
+.txl:hover{text-decoration:underline}
+.sec{display:none}.sec.active{display:block;animation:rise .3s ease}
+.empty{text-align:center;padding:65px 20px;color:var(--m)}
+.empty .ei{font-size:2.6rem;margin-bottom:11px;opacity:.35}
+.empty p{font-size:.85rem}
+.nft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px}
+.nft-card{background:var(--s);border:1px solid var(--b);border-radius:13px;overflow:hidden;transition:all .22s}
+.nft-card:hover{border-color:var(--a2);transform:translateY(-3px);box-shadow:0 8px 28px rgba(123,97,255,.17)}
+.ni{width:100%;aspect-ratio:1;background:linear-gradient(135deg,var(--s2),#0a1520);display:flex;align-items:center;justify-content:center;font-size:2.6rem;position:relative;overflow:hidden}
+.ni img{width:100%;height:100%;object-fit:cover}
+.nb{padding:12px}
+.nc{font-size:.64rem;color:var(--a2);text-transform:uppercase;letter-spacing:1px;font-family:'Space Mono',monospace;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nn{font-weight:700;font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nid{font-size:.66rem;color:var(--m);font-family:'Space Mono',monospace;margin-top:2px}
+.cf{display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.cf span{font-size:.67rem;color:var(--m);letter-spacing:1.5px;text-transform:uppercase;font-family:'Space Mono',monospace}
+.cfb{padding:4px 12px;border-radius:20px;border:1px solid var(--b);background:var(--s2);color:var(--m);font-size:.69rem;cursor:pointer;font-family:'Space Mono',monospace;transition:all .2s}
+.cfb:hover,.cfb.active{border-color:var(--a);color:var(--a);background:rgba(0,229,255,.07)}
+footer{text-align:center;padding:40px 0 22px;color:var(--m);font-size:.7rem;font-family:'Space Mono',monospace}
+footer a{color:var(--a);text-decoration:none}
+@media(max-width:680px){
+  .wcard{flex-direction:column;align-items:flex-start}.wr{text-align:left}.nw{font-size:1.8rem}
+  .gt{grid-template-columns:2fr 1fr 1fr}.gt .h4{display:none}
+  .gx{grid-template-columns:1fr 1fr 1fr}.gx .h4,.gx .h5{display:none}
+  .tabs{width:100%}.cbadges{display:none}
+}
+</style>
+</head>
+<body>
+<div class="w">
+
+<header>
+  <div class="logo"><div class="li">&#128225;</div><span class="lt">Trace</span><span class="lf">Fi</span></div>
+  <div class="cbadges">
+    <div class="cb ceth"><div class="dot deth"></div>Ethereum</div>
+    <div class="cb carb"><div class="dot darb"></div>Arbitrum</div>
+    <div class="cb cbase"><div class="dot dbase"></div>Base</div>
+    <div class="cb cbsc"><div class="dot dbsc"></div>BSC</div>
+  </div>
+</header>
+
+<div class="slbl">// Enter Wallet Address or ENS Name</div>
+<div class="sbox">
+  <input type="text" id="addr" placeholder="0x... or vitalik.eth" autocomplete="off" spellcheck="false"/>
+  <button class="btrack" id="tBtn" onclick="track()">Track Wallet &#8594;</button>
+</div>
+<div class="chips">
+  <span>Try:</span>
+  <span class="chip" onclick="fill('vitalik.eth')">vitalik.eth</span>
+  <span class="chip" onclick="fill('0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045')">Vitalik 0x</span>
+  <span class="chip" onclick="fill('0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B')">Sample</span>
+</div>
+
+<div id="err"></div>
+<div id="loading">
+  <div class="spin"></div>
+  <p>Scanning 4 chains simultaneously...</p>
+  <p style="font-size:.7rem;margin-top:5px;opacity:.55;font-family:'Space Mono',monospace">Ethereum &#183; Arbitrum &#183; Base &#183; BSC</p>
+  <p id="prog"></p>
+</div>
+
+<div id="dash">
+  <div class="wcard">
+    <div class="wl">
+      <div class="wtag">Tracked Wallet</div>
+      <div class="wens" id="wEns"></div>
+      <div class="waddr" id="wAddr"></div>
+    </div>
+    <div class="wr">
+      <div class="nw" id="wNW">$0.00</div>
+      <div class="nwl">Est. Portfolio Value</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="sv c1" id="sT">0</div><div class="sl">Tokens</div></div>
+    <div class="stat"><div class="sv c2" id="sN">0</div><div class="sl">NFTs</div></div>
+    <div class="stat"><div class="sv c3" id="sTx">0</div><div class="sl">Transactions</div></div>
+    <div class="stat"><div class="sv c4" id="sE">0</div><div class="sl">ETH Balance</div></div>
+    <div class="stat"><div class="sv c5" id="sBNB">0</div><div class="sl">BNB Balance</div></div>
+    <div class="stat"><div class="sv c6" id="sCh">4</div><div class="sl">Chains</div></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" id="t-tok" onclick="sw('tok')">&#129683; Tokens <span class="bdg" id="b-tok">0</span></button>
+    <button class="tab" id="t-nft" onclick="sw('nft')">&#128444; NFTs <span class="bdg" id="b-nft">0</span></button>
+    <button class="tab" id="t-tx"  onclick="sw('tx')">&#9889; Txns <span class="bdg" id="b-tx">0</span></button>
+  </div>
+
+  <div class="sec active" id="s-tok">
+    <div class="cf"><span>Chain:</span>
+      <button class="cfb active" onclick="fc('all',this,'tok')">All</button>
+      <button class="cfb" onclick="fc('eth',this,'tok')">Ethereum</button>
+      <button class="cfb" onclick="fc('arb',this,'tok')">Arbitrum</button>
+      <button class="cfb" onclick="fc('base',this,'tok')">Base</button>
+      <button class="cfb" onclick="fc('bsc',this,'tok')">BSC</button>
+    </div>
+    <div class="tw"><div class="th gt"><div>Asset Name</div><div>Balance</div><div class="h4">Price (24h)</div><div>Value (USD)</div></div><div id="tBody"></div></div>
+  </div>
+
+  <div class="sec" id="s-nft">
+    <div class="cf"><span>Chain:</span>
+      <button class="cfb active" onclick="fc('all',this,'nft')">All</button>
+      <button class="cfb" onclick="fc('eth',this,'nft')">Ethereum</button>
+      <button class="cfb" onclick="fc('arb',this,'nft')">Arbitrum</button>
+      <button class="cfb" onclick="fc('base',this,'nft')">Base</button>
+      <button class="cfb" onclick="fc('bsc',this,'nft')">BSC</button>
+    </div>
+    <div class="nft-grid" id="nGrid"></div>
+  </div>
+
+  <div class="sec" id="s-tx">
+    <div class="cf"><span>Chain:</span>
+      <button class="cfb active" onclick="fc('all',this,'tx')">All</button>
+      <button class="cfb" onclick="fc('eth',this,'tx')">Ethereum</button>
+      <button class="cfb" onclick="fc('arb',this,'tx')">Arbitrum</button>
+      <button class="cfb" onclick="fc('base',this,'tx')">Base</button>
+      <button class="cfb" onclick="fc('bsc',this,'tx')">BSC</button>
+    </div>
+    <div class="tw"><div class="th gx"><div>Tx Hash</div><div class="h4">Method</div><div>Type</div><div>Value</div><div>Date</div></div><div id="xBody"></div></div>
+  </div>
+</div>
+
+<footer>TraceFi &#183; Powered by <a href="https://moralis.io" target="_blank">Moralis API</a> &#183; Ethereum &#183; Arbitrum &#183; Base &#183; BSC</footer>
+</div>
+
+<script>
+var MKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJub25jZSI6IjdlNjc1MDAyLWViZDEtNGVkNS1iN2NiLTgxZDE3Y2Q1MTY5ZCIsIm9yZ0lkIjoiNTAzODA3IiwidXNlcklkIjoiNTE4NDAwIiwidHlwZUlkIjoiNmVhNWNmYTMtNDBiMi00MGNmLTk0NTctMDVjZmY4NmQyMzFkIiwidHlwZSI6IlBST0pFQ1QiLCJpYXQiOjE3NzI1NTA3NjMsImV4cCI6NDkyODMxMDc2M30.d-KjJuSbKQih3yOeb6SLcBAVWNy913JSIxdDRGdi42M';
+var BU='https://deep-index.moralis.io/api/v2.2';
+var MH={'accept':'application/json','X-API-Key':MKEY};
+var CHAINS=[
+  {id:'eth', lb:'ETH', mc:'eth',      nat:'ETH', ex:'https://etherscan.io/tx/',  tc:'t-eth'},
+  {id:'arb', lb:'ARB', mc:'arbitrum', nat:'ETH', ex:'https://arbiscan.io/tx/',   tc:'t-arb'},
+  {id:'base',lb:'BASE',mc:'base',     nat:'ETH', ex:'https://basescan.org/tx/',  tc:'t-base'},
+  {id:'bsc', lb:'BSC', mc:'bsc',      nat:'BNB', ex:'https://bscscan.com/tx/',   tc:'t-bsc'},
+];
+var TR=[],NR=[],XR=[];
+
+function fill(v){document.getElementById('addr').value=v;}
+function sh(a){return a?a.slice(0,6)+'...'+a.slice(-4):'';}
+function sp(m){document.getElementById('prog').textContent=m;}
+function fm(n){if(n==null||isNaN(n))return'$0';n=parseFloat(n);if(n===0)return'$0';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(n>=1000)return'$'+n.toLocaleString('en-US',{maximumFractionDigits:2});if(n>=1)return'$'+n.toFixed(2);if(n<0.01)return'<$0.01';return'$'+n.toFixed(4);}
+function fn(n,d){if(!n&&n!==0)return'0';n=parseFloat(n);d=d||4;if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1000)return n.toLocaleString('en-US',{maximumFractionDigits:d});return n.toFixed(d).replace(/\.?0+$/,'')||'0';}
+function fd(s){if(!s)return'—';return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}
+function fw(v,d){if(!v)return 0;return parseFloat(v)/Math.pow(10,parseInt(d)||18);}
+function ct(c){return'<span class="ctag '+c.tc+'">'+c.lb+'</span>';}
+
+async function mg(path,params){var u=new URL(BU+path);if(params)Object.entries(params).forEach(function(kv){u.searchParams.set(kv[0],String(kv[1]));});var r=await fetch(u.toString(),{headers:MH});if(!r.ok)throw new Error('API '+r.status);return r.json();}
+
+function mkNative(amt,c){var sym=c.nat;var ico=sym==='BNB'?'https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png':'https://assets.coingecko.com/coins/images/279/small/ethereum.png';return{cid:c.id,val:0,html:'<div class="tr gt"><div class="ac"><div class="iw"><img src="'+ico+'" onerror="this.parentElement.innerHTML=\''+sym.charAt(0)+'\'" /></div><div><div class="an">'+(sym==='BNB'?'BNB':sym)+ct(c)+'</div><div class="as2">'+sym+' &#183; Native</div></div></div><div class="mono">'+fn(amt,4)+' <span class="neu">'+sym+'</span></div><div class="mono h4">&#8212;</div><div class="mono neu">&#8212;</div></div>'};}
+
+function mkTok(t,c){var name=t.name||t.symbol||'Unknown';var sym=t.symbol||'?';var bal=fw(t.balance||'0',t.decimals||18);var logo=t.logo||t.thumbnail||null;var price=t.usd_price?parseFloat(t.usd_price):0;var val=price*bal;var chg=t.usd_price_24hr_percent_change?parseFloat(t.usd_price_24hr_percent_change):null;var chgH=chg!==null?'<span class="'+(chg>=0?'pos':'neg')+'">'+(chg>=0?'+':'')+chg.toFixed(2)+'%</span>':'<span class="neu">&#8212;</span>';var ico=logo?'<img src="'+logo+'" onerror="this.parentElement.innerHTML=\''+sym.charAt(0)+'\'" />':sym.charAt(0);return{cid:c.id,val:val,html:'<div class="tr gt"><div class="ac"><div class="iw">'+ico+'</div><div><div class="an">'+name+ct(c)+'</div><div class="as2">'+sym+'</div></div></div><div class="mono">'+fn(bal,4)+' <span class="neu">'+sym+'</span></div><div class="mono h4">'+(price?fm(price):'&#8212;')+' '+chgH+'</div><div class="mono '+(val>0?'pos':'neu')+'">'+(val>0.001?fm(val):'&#8212;')+'</div></div>'};}
+
+async function track(){
+  var raw=document.getElementById('addr').value.trim();
+  if(!raw)return;
+  var btn=document.getElementById('tBtn');
+  btn.disabled=true;btn.textContent='Loading...';
+  document.getElementById('dash').style.display='none';
+  document.getElementById('err').style.display='none';
+  document.getElementById('loading').style.display='block';
+  sp('Resolving address...');
+  try{
+    var address=raw;
+    if(raw.includes('.')){
+      try{var er=await mg('/resolve/'+encodeURIComponent(raw),{});address=er.address||raw;}
+      catch(e){throw new Error('Could not resolve "'+raw+'". Use 0x address.');}
+    }
+    var addrLow=address.toLowerCase();
+    sp('Fetching all 4 chains in parallel...');
+    var fetches=CHAINS.map(function(c){
+      return Promise.allSettled([
+        mg('/'+address+'/balance',{chain:c.mc}),
+        mg('/'+address+'/erc20',{chain:c.mc,limit:100}),
+        mg('/'+address+'/nft',{chain:c.mc,limit:100,media_items:true}),
+        mg('/'+address,{chain:c.mc,limit:100}),
+      ]);
+    });
+    var all=await Promise.all(fetches);
+    sp('Processing...');
+    TR=[];NR=[];XR=[];
+    var totETH=0,totBNB=0,totVal=0,totTx=0;
+    var EMOJ=['&#127912;','&#129412;','&#128126;','&#127775;','&#127885;','&#128302;','&#129418;','&#128056;','&#127752;','&#129710;','&#127922;','&#9889;','&#128142;','&#127919;'];
+    CHAINS.forEach(function(c,ci){
+      var res=all[ci];
+      var bR=res[0].status==='fulfilled'?res[0].value:null;
+      var tR=res[1].status==='fulfilled'?res[1].value:null;
+      var nR=res[2].status==='fulfilled'?res[2].value:null;
+      var xR=res[3].status==='fulfilled'?res[3].value:null;
+      var nat=bR?fw(bR.balance,18):0;
+      if(c.nat==='BNB')totBNB+=nat; else totETH+=nat;
+      if(nat>0)TR.push(mkNative(nat,c));
+      var toks=Array.isArray(tR)?tR:((tR&&tR.result)?tR.result:[]);
+      toks.forEach(function(t){if(parseFloat(t.balance||0)>0){var row=mkTok(t,c);totVal+=row.val||0;TR.push(row);}});
+      var nfts=(nR&&nR.result)?nR.result:[];
+      nfts.forEach(function(n){NR.push({n:n,c:c,idx:NR.length});});
+      var txs=(xR&&xR.result)?xR.result:[];
+      totTx+=txs.length;
+      txs.forEach(function(t){XR.push({tx:t,c:c,al:addrLow});});
+    });
+    XR.sort(function(a,b){return new Date(b.tx.block_timestamp)-new Date(a.tx.block_timestamp);});
+    var isEns=raw.includes('.');
+    document.getElementById('wEns').textContent=isEns?raw:sh(address);
+    document.getElementById('wAddr').textContent=isEns?address:'';
+    document.getElementById('wNW').textContent=totVal>0?fm(totVal):fn(totETH,4)+' ETH';
+    document.getElementById('sT').textContent=TR.length;
+    document.getElementById('b-tok').textContent=TR.length;
+    document.getElementById('sN').textContent=NR.length;
+    document.getElementById('b-nft').textContent=NR.length;
+    document.getElementById('sTx').textContent=totTx;
+    document.getElementById('b-tx').textContent=totTx;
+    document.getElementById('sE').textContent=fn(totETH,4)+' ETH';
+    document.getElementById('sBNB').textContent=fn(totBNB,4)+' BNB';
+    document.getElementById('sCh').textContent='4';
+    rTok('all');rNFT('all');rTx('all');
+    document.getElementById('loading').style.display='none';
+    document.getElementById('dash').style.display='block';
+  }catch(e){
+    document.getElementById('loading').style.display='none';
+    var el=document.getElementById('err');el.style.display='block';
+    el.innerHTML='&#9888; '+(e.message||'Failed to load.')+'<br><br>Make sure the address is valid.';
+    console.error(e);
+  }
+  btn.disabled=false;btn.textContent='Track Wallet &#8594;';
+}
+
+function rTok(cid){
+  var b=document.getElementById('tBody');
+  var rows=cid==='all'?TR:TR.filter(function(r){return r.cid===cid;});
+  b.innerHTML=rows.length?rows.map(function(r){return r.html;}).join(''):'<div class="empty"><div class="ei">&#129683;</div><p>No tokens on this chain</p></div>';
+}
+
+function rNFT(cid){
+  var EMOJ=['&#127912;','&#129412;','&#128126;','&#127775;','&#127885;','&#128302;','&#129418;','&#128056;','&#127752;','&#129710;','&#127922;','&#9889;','&#128142;','&#127919;'];
+  var items=cid==='all'?NR:NR.filter(function(i){return i.c.id===cid;});
+  var ng=document.getElementById('nGrid');
+  if(!items.length){ng.innerHTML='<div class="empty" style="grid-column:1/-1"><div class="ei">&#128444;</div><p>No NFTs on this chain</p></div>';return;}
+  ng.innerHTML=items.slice(0,60).map(function(item,i){
+    var n=item.n,c=item.c;
+    var meta={};try{meta=n.metadata?JSON.parse(n.metadata):{};}catch(e){}
+    var img=null;
+    if(n.media&&n.media.media_collection){var mc=n.media.media_collection;img=(mc.medium&&mc.medium.url)||(mc.low&&mc.low.url)||null;}
+    if(!img)img=meta.image||null;
+    var name=n.name||meta.name||('Token #'+(n.token_id?n.token_id.slice(0,8):'?'));
+    var col=n.name||'Unknown Collection';
+    var tid=n.token_id?'#'+(n.token_id.length>8?n.token_id.slice(0,6)+'...':n.token_id):'';
+    var emoji=EMOJ[i%EMOJ.length];
+    var imgH=img?'<img src="'+img+'" onerror="this.style.display=\'none\'" />':emoji;
+    return'<div class="nft-card"><div class="ni">'+imgH+'<span style="position:absolute;top:7px;right:7px;background:rgba(0,0,0,.7);border-radius:4px;padding:2px 6px;font-size:.58rem;font-family:Space Mono,monospace" class="ctag '+c.tc+'">'+c.lb+'</span></div><div class="nb"><div class="nc">'+col+'</div><div class="nn">'+name+'</div><div class="nid">'+tid+'</div></div></div>';
+  }).join('');
+}
+
+function rTx(cid){
+  var items=cid==='all'?XR:XR.filter(function(i){return i.c.id===cid;});
+  var xb=document.getElementById('xBody');
+  if(!items.length){xb.innerHTML='<div class="empty"><div class="ei">&#9889;</div><p>No transactions on this chain</p></div>';return;}
+  xb.innerHTML=items.slice(0,200).map(function(item){
+    var t=item.tx,c=item.c,al=item.al;
+    var hash=t.hash||'';
+    var to=(t.to_address||'').toLowerCase();
+    var from=(t.from_address||'').toLowerCase();
+    var isIn=to===al,isOut=from===al,isSelf=isIn&&isOut;
+    var val=fw(t.value||'0',18);
+    var sym=c.nat;
+    var date=fd(t.block_timestamp);
+    var method=(t.decoded_call&&t.decoded_call.label)?t.decoded_call.label:(t.input==='0x'?'Transfer':'Contract');
+    var failed=t.receipt_status==='0';
+    var tH,vH;
+    if(isSelf){tH='<span class="bc">SELF</span>';vH='<span class="neu">'+fn(val,4)+' '+sym+'</span>';}
+    else if(isIn){tH='<span class="bi">IN</span>';vH='<span class="pos">+'+fn(val,4)+' '+sym+'</span>';}
+    else{tH='<span class="bo">OUT</span>';vH='<span class="neg">-'+fn(val,4)+' '+sym+'</span>';}
+    return'<div class="tr gx" style="'+(failed?'opacity:.45':'')+'"><div><a class="txl" href="'+c.ex+hash+'" target="_blank">'+sh(hash)+'</a><div style="margin-top:3px"><span class="ctag '+c.tc+'">'+c.lb+'</span></div></div><div class="mono neu h4" style="font-size:.69rem">'+method+(failed?' &#10007;':'')+'</div><div>'+tH+'</div><div class="mono">'+vH+'</div><div class="mono neu">'+date+'</div></div>';
+  }).join('');
+}
+
+function fc(cid,btn,type){
+  btn.parentElement.querySelectorAll('.cfb').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  if(type==='tok')rTok(cid);
+  else if(type==='nft')rNFT(cid);
+  else rTx(cid);
+}
+
+function sw(t){
+  ['tok','nft','tx'].forEach(function(x){
+    document.getElementById('t-'+x).classList.toggle('active',x===t);
+    document.getElementById('s-'+x).classList.toggle('active',x===t);
+  });
+}
+
+document.getElementById('addr').addEventListener('keydown',function(e){if(e.key==='Enter')track();});
+</script>
+</body>
+</html>
