@@ -776,8 +776,8 @@ async function connect() {
     log(`Balance: ${ethers.utils.formatEther(bal)} ETH`, 'ok');
     setNav('connected');
     enableActions(true);
+    onMintFnChange();
     saveWalletSettings();
-    onMintFnChange();   // replace any 0xYourAddress placeholder with real wallet
     pollGas(); pollBalance();
   } catch(e) { log('Connect failed: ' + e.message, 'err'); }
 }
@@ -866,59 +866,59 @@ const PRICE_PROBES = [
 
 // WL price probes (no args) — global WL price stored in contract
 const WL_PRICE_PROBES = [
-  { fn:'whitelistPrice',        abi:'function whitelistPrice() view returns (uint256)' },
-  { fn:'presalePrice',          abi:'function presalePrice() view returns (uint256)' },
-  { fn:'allowlistPrice',        abi:'function allowlistPrice() view returns (uint256)' },
-  { fn:'wlPrice',               abi:'function wlPrice() view returns (uint256)' },
-  { fn:'WL_MINT_PRICE',         abi:'function WL_MINT_PRICE() view returns (uint256)' },
-  { fn:'preSalePrice',          abi:'function preSalePrice() view returns (uint256)' },
-  { fn:'privateMintPrice',      abi:'function privateMintPrice() view returns (uint256)' },
-  { fn:'wlMintPrice',           abi:'function wlMintPrice() view returns (uint256)' },
-  { fn:'allowListPrice',        abi:'function allowListPrice() view returns (uint256)' },
-  { fn:'presaleCost',           abi:'function presaleCost() view returns (uint256)' },
-  { fn:'earlyMintPrice',        abi:'function earlyMintPrice() view returns (uint256)' },
-  { fn:'WHITELIST_PRICE',       abi:'function WHITELIST_PRICE() view returns (uint256)' },
-  { fn:'getWLPrice',            abi:'function getWLPrice() view returns (uint256)' },
-  { fn:'getPresalePrice',       abi:'function getPresalePrice() view returns (uint256)' },
-  { fn:'getAllowlistPrice',     abi:'function getAllowlistPrice() view returns (uint256)' },
-  { fn:'PRESALE_PRICE',         abi:'function PRESALE_PRICE() view returns (uint256)' },
-  { fn:'ALLOWLIST_PRICE',       abi:'function ALLOWLIST_PRICE() view returns (uint256)' },
-  { fn:'presaleMintPrice',      abi:'function presaleMintPrice() view returns (uint256)' },
-  { fn:'allowlistMintPrice',    abi:'function allowlistMintPrice() view returns (uint256)' },
-  { fn:'whitelistMintCost',     abi:'function whitelistMintCost() view returns (uint256)' },
-  { fn:'wlCost',                abi:'function wlCost() view returns (uint256)' },
-  { fn:'privateSalePrice',      abi:'function privateSalePrice() view returns (uint256)' },
-  { fn:'earlyAccessPrice',      abi:'function earlyAccessPrice() view returns (uint256)' },
-  { fn:'ogPrice',               abi:'function ogPrice() view returns (uint256)' },
-  { fn:'OG_PRICE',              abi:'function OG_PRICE() view returns (uint256)' },
-  { fn:'phase1Price',           abi:'function phase1Price() view returns (uint256)' },
-  { fn:'phase2Price',           abi:'function phase2Price() view returns (uint256)' },
+  { fn:'whitelistPrice',      abi:'function whitelistPrice() view returns (uint256)' },
+  { fn:'presalePrice',        abi:'function presalePrice() view returns (uint256)' },
+  { fn:'allowlistPrice',      abi:'function allowlistPrice() view returns (uint256)' },
+  { fn:'wlPrice',             abi:'function wlPrice() view returns (uint256)' },
+  { fn:'WL_MINT_PRICE',       abi:'function WL_MINT_PRICE() view returns (uint256)' },
+  { fn:'preSalePrice',        abi:'function preSalePrice() view returns (uint256)' },
+  { fn:'privateMintPrice',    abi:'function privateMintPrice() view returns (uint256)' },
+  { fn:'wlMintPrice',         abi:'function wlMintPrice() view returns (uint256)' },
+  { fn:'allowListPrice',      abi:'function allowListPrice() view returns (uint256)' },
+  { fn:'presaleCost',         abi:'function presaleCost() view returns (uint256)' },
+  { fn:'earlyMintPrice',      abi:'function earlyMintPrice() view returns (uint256)' },
+  { fn:'WHITELIST_PRICE',     abi:'function WHITELIST_PRICE() view returns (uint256)' },
+  { fn:'getWLPrice',          abi:'function getWLPrice() view returns (uint256)' },
+  { fn:'getPresalePrice',     abi:'function getPresalePrice() view returns (uint256)' },
+  { fn:'getAllowlistPrice',   abi:'function getAllowlistPrice() view returns (uint256)' },
+  { fn:'PRESALE_PRICE',       abi:'function PRESALE_PRICE() view returns (uint256)' },
+  { fn:'ALLOWLIST_PRICE',     abi:'function ALLOWLIST_PRICE() view returns (uint256)' },
+  { fn:'presaleMintPrice',    abi:'function presaleMintPrice() view returns (uint256)' },
+  { fn:'allowlistMintPrice',  abi:'function allowlistMintPrice() view returns (uint256)' },
+  { fn:'whitelistMintCost',   abi:'function whitelistMintCost() view returns (uint256)' },
+  { fn:'wlCost',              abi:'function wlCost() view returns (uint256)' },
+  { fn:'privateSalePrice',    abi:'function privateSalePrice() view returns (uint256)' },
+  { fn:'earlyAccessPrice',    abi:'function earlyAccessPrice() view returns (uint256)' },
+  { fn:'ogPrice',             abi:'function ogPrice() view returns (uint256)' },
+  { fn:'OG_PRICE',            abi:'function OG_PRICE() view returns (uint256)' },
+  { fn:'phase1Price',         abi:'function phase1Price() view returns (uint256)' },
+  { fn:'phase2Price',         abi:'function phase2Price() view returns (uint256)' },
 ];
 
-// WL price probes with uint256 phase/stage index arg (try index 0 and 1)
-const WL_PHASE_PRICE_PROBES = [
-  { fn:'getWLPrice',       abi:'function getWLPrice(uint256 phase) view returns (uint256)' },
-  { fn:'getPriceByPhase',  abi:'function getPriceByPhase(uint256 phase) view returns (uint256)' },
-  { fn:'getPriceByStage',  abi:'function getPriceByStage(uint256 stage) view returns (uint256)' },
-  { fn:'getPhasePrice',    abi:'function getPhasePrice(uint256 phase) view returns (uint256)' },
-  { fn:'getStagePrice',    abi:'function getStagePrice(uint256 stage) view returns (uint256)' },
-  { fn:'mintPrice',        abi:'function mintPrice(uint256 phase) view returns (uint256)' },
-  { fn:'cost',             abi:'function cost(uint256 stage) view returns (uint256)' },
-  { fn:'presalePrice',     abi:'function presalePrice(uint256 phase) view returns (uint256)' },
+// WL price probes taking a uint256 phase/stage index — try 0 and 1
+const WL_PHASE_PROBES = [
+  { fn:'getWLPrice',      abi:'function getWLPrice(uint256 phase) view returns (uint256)' },
+  { fn:'getPriceByPhase', abi:'function getPriceByPhase(uint256 phase) view returns (uint256)' },
+  { fn:'getPriceByStage', abi:'function getPriceByStage(uint256 stage) view returns (uint256)' },
+  { fn:'getPhasePrice',   abi:'function getPhasePrice(uint256 phase) view returns (uint256)' },
+  { fn:'getStagePrice',   abi:'function getStagePrice(uint256 stage) view returns (uint256)' },
+  { fn:'mintPrice',       abi:'function mintPrice(uint256 phase) view returns (uint256)' },
+  { fn:'cost',            abi:'function cost(uint256 stage) view returns (uint256)' },
+  { fn:'presalePrice',    abi:'function presalePrice(uint256 phase) view returns (uint256)' },
 ];
 
 // WL price probes that take wallet address (wallet-specific WL price)
 const WL_ADDR_PRICE_PROBES = [
-  { fn:'getMintPrice',            abi:'function getMintPrice(address wallet) view returns (uint256)' },
-  { fn:'priceForAddress',         abi:'function priceForAddress(address wallet) view returns (uint256)' },
-  { fn:'getAllowListMintPrice',   abi:'function getAllowListMintPrice(address wallet) view returns (uint256)' },
-  { fn:'whitelistMintPrice',      abi:'function whitelistMintPrice(address wallet) view returns (uint256)' },
-  { fn:'mintPrice',               abi:'function mintPrice(address wallet) view returns (uint256)' },
-  { fn:'getPrice',                abi:'function getPrice(address wallet) view returns (uint256)' },
-  { fn:'getWLMintPrice',          abi:'function getWLMintPrice(address wallet) view returns (uint256)' },
-  { fn:'getPresaleMintPrice',     abi:'function getPresaleMintPrice(address wallet) view returns (uint256)' },
-  { fn:'getUserPrice',            abi:'function getUserPrice(address wallet) view returns (uint256)' },
-  { fn:'priceOf',                 abi:'function priceOf(address wallet) view returns (uint256)' },
+  { fn:'getMintPrice',          abi:'function getMintPrice(address wallet) view returns (uint256)' },
+  { fn:'priceForAddress',       abi:'function priceForAddress(address wallet) view returns (uint256)' },
+  { fn:'getAllowListMintPrice', abi:'function getAllowListMintPrice(address wallet) view returns (uint256)' },
+  { fn:'whitelistMintPrice',    abi:'function whitelistMintPrice(address wallet) view returns (uint256)' },
+  { fn:'mintPrice',             abi:'function mintPrice(address wallet) view returns (uint256)' },
+  { fn:'getPrice',              abi:'function getPrice(address wallet) view returns (uint256)' },
+  { fn:'getWLMintPrice',        abi:'function getWLMintPrice(address wallet) view returns (uint256)' },
+  { fn:'getPresaleMintPrice',   abi:'function getPresaleMintPrice(address wallet) view returns (uint256)' },
+  { fn:'getUserPrice',          abi:'function getUserPrice(address wallet) view returns (uint256)' },
+  { fn:'priceOf',               abi:'function priceOf(address wallet) view returns (uint256)' },
 ];
 
 // SeaDrop ABI for getPublicDrop
@@ -1021,10 +1021,13 @@ async function fetchMintPrice(autoApply = false) {
     }
   }
 
-  // ── 5. WL price via phase/stage index (try index 0 and 1) ─────────────────
+  if (!_wlMintPrice && _publicMintPrice) {
+    log('No separate WL price — WL likely uses same price or proof-only gating', 'warn');
+  }
+
+  // ── 5. Phase/stage-indexed WL price (try index 0 and 1) ───────────────────
   if (!_wlMintPrice) {
-    log('Checking phase/stage-indexed WL prices...', 'info');
-    for (const probe of WL_PHASE_PRICE_PROBES) {
+    for (const probe of WL_PHASE_PROBES) {
       for (const idx of [0, 1]) {
         try {
           const ct = new ethers.Contract(addr, [probe.abi], provider);
@@ -1043,10 +1046,6 @@ async function fetchMintPrice(autoApply = false) {
       }
       if (_wlMintPrice) break;
     }
-  }
-
-  if (!_wlMintPrice && _publicMintPrice) {
-    log('No separate WL price — WL likely uses same price or proof-only gating', 'warn');
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -1438,78 +1437,63 @@ async function detectABI() {
 }
 
 
-// Called when Mint Function Name or ABI textarea changes — re-derives args
+// Called when Mint Function Name or ABI textarea changes
 function onMintFnChange() {
   const fnName = document.getElementById('mintFn').value.trim();
   if (!fnName) return;
-
-  // 1. Try to find the function in the current ABI textarea
   try {
     const abiRaw = document.getElementById('mintAbi').value.trim();
     if (abiRaw) {
       const abi = JSON.parse(abiRaw);
-      let inputs = null;
-
       for (const entry of abi) {
+        let inputs = null;
         if (typeof entry === 'string') {
-          // String ABI like: "function mint(address to, uint256 qty) payable"
-          // Must match function name exactly
+          // Match exact function name: "function mint(" not "function mintTo("
           const nameMatch = entry.match(/function\s+(\w+)\s*\(/);
           if (!nameMatch || nameMatch[1] !== fnName) continue;
-          // Extract params — handle nested parens (tuples) by counting depth
+          // Paren-depth parser handles tuple(...) types
           const start = entry.indexOf('(');
           let depth = 0, end = -1;
           for (let i = start; i < entry.length; i++) {
             if (entry[i] === '(') depth++;
             else if (entry[i] === ')') { depth--; if (depth === 0) { end = i; break; } }
           }
-          const paramStr = end > start ? entry.slice(start + 1, end) : '';
-          inputs = paramStr.trim() ? parseParamString(paramStr) : [];
-          break;
+          const paramStr = (end > start) ? entry.slice(start + 1, end).trim() : '';
+          inputs = paramStr ? _parseParams(paramStr) : [];
         } else if (entry && entry.type === 'function' && entry.name === fnName) {
           inputs = entry.inputs || [];
-          break;
         }
-      }
-
-      if (inputs !== null) {
-        autoFillArgs({ inputs });
-        return;
+        if (inputs !== null) { autoFillArgs({ inputs }); return; }
       }
     }
   } catch {}
-
-  // 2. Fallback: check KNOWN_STANDARDS
+  // Fallback: KNOWN_STANDARDS
   const std = KNOWN_STANDARDS.find(s => s.fn === fnName);
   if (std) {
-    const walletAddr = wallet ? wallet.address : '0xYourAddress';
-    document.getElementById('mintArgs').value = std.args(walletAddr);
-    if (std.args(walletAddr)) log('Auto-filled args: ' + std.args(walletAddr), 'ok');
+    const addr = wallet ? wallet.address : '0xYourAddress';
+    const val = std.args(addr);
+    document.getElementById('mintArgs').value = val;
+    if (val) log('Auto-filled args: ' + val, 'ok');
   }
 }
 
-// Parse a flat param string like "address to, uint256 qty, bytes32[] proof"
-// Handles tuple params by treating tuple(...) as a single token
-function parseParamString(paramStr) {
-  const inputs = [];
-  let depth = 0, current = '';
-  for (let i = 0; i <= paramStr.length; i++) {
-    const ch = i < paramStr.length ? paramStr[i] : ',';
-    if (ch === '(') { depth++; current += ch; }
-    else if (ch === ')') { depth--; current += ch; }
+// Split a flat param string respecting nested parens (tuple types)
+function _parseParams(str) {
+  const inputs = []; let depth = 0, cur = '';
+  for (let i = 0; i <= str.length; i++) {
+    const ch = i < str.length ? str[i] : ',';
+    if (ch === '(') { depth++; cur += ch; }
+    else if (ch === ')') { depth--; cur += ch; }
     else if (ch === ',' && depth === 0) {
-      const part = current.trim();
-      if (part) {
-        const tokens = part.split(/\s+/);
-        inputs.push({ type: tokens[0] || '', name: tokens[tokens.length - 1] || '' });
-      }
-      current = '';
-    } else { current += ch; }
+      const p = cur.trim();
+      if (p) { const t = p.split(/\s+/); inputs.push({ type: t[0], name: t[t.length-1] || '' }); }
+      cur = '';
+    } else cur += ch;
   }
   return inputs;
 }
 
-// Auto-fill args from a parsed ABI function object — builds position-by-position
+// Auto-fill args — builds each argument position-by-position from the input types
 function autoFillArgs(fn) {
   if (!fn || !fn.inputs) return;
   const walletAddr = wallet ? wallet.address : '0xYourAddress';
@@ -1519,23 +1503,21 @@ function autoFillArgs(fn) {
     return;
   }
   const parts = fn.inputs.map(inp => {
-    const t = (inp.type || '').toLowerCase();
-    const it = (inp.internalType || inp.type || '').toLowerCase();
+    const t  = (inp.type || '').toLowerCase();
     const nm = (inp.name || '').toLowerCase();
-    if (t === 'address') return walletAddr;
-    if (t.startsWith('uint') || t.startsWith('int')) return '1';
-    if (t === 'bool') return 'false';
+    if (t === 'address')                                         return walletAddr;
+    if (t.startsWith('uint') || t.startsWith('int'))            return '1';
+    if (t === 'bool')                                           return 'false';
     if (t.includes('bytes32') && (t.includes('[]') || nm.includes('proof') || nm.includes('merkle'))) return '[]';
-    if (t.startsWith('bytes')) return '0x';
-    if (t.includes('[]')) return '[]';
-    if (t === 'string') return '""';
-    if (it.includes('struct') || t === 'tuple') return '[]';
+    if (t.startsWith('bytes'))                                  return '0x';
+    if (t.endsWith('[]') || t === 'tuple[]')                   return '[]';
+    if (t === 'string')                                         return '""';
+    if (t === 'tuple')                                          return '[]';
     return '0';
   });
   const args = parts.join(', ');
   document.getElementById('mintArgs').value = args;
-  if (args.trim()) log('Auto-filled args: ' + args, 'ok');
-  else log('Args: leave blank (qty only)', 'info');
+  log('Auto-filled args: ' + (args || '(blank — qty-only mint)'), 'ok');
 }
 
 // ─── CONTRACT UTILS ──────────────────────────────────────
