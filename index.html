@@ -483,6 +483,9 @@ textarea { resize: vertical; min-height: 72px; }
         <button onclick="connect()" style="padding:11px;background:var(--black);color:var(--white);border:none;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--orange)'" onmouseout="this.style.background='var(--black)'">CONNECT</button>
         <button onclick="disconnect()" style="padding:11px;background:var(--white);color:var(--black);border:1.5px solid var(--black);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--red)';this.style.color='var(--white)';this.style.borderColor='var(--red)'" onmouseout="this.style.background='var(--white)';this.style.color='var(--black)';this.style.borderColor='var(--black)'">DISCONNECT</button>
       </div>
+      <div style="margin-top:6px">
+        <button onclick="clearSavedSettings()" style="width:100%;padding:7px;background:transparent;color:var(--gray3);border:1px dashed var(--border);font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--gray3)';this.style.borderColor='var(--border)'">✕ CLEAR SAVED CREDENTIALS</button>
+      </div>
     </div>
 
     <!-- CONTRACT -->
@@ -773,6 +776,7 @@ async function connect() {
     log(`Balance: ${ethers.utils.formatEther(bal)} ETH`, 'ok');
     setNav('connected');
     enableActions(true);
+    saveWalletSettings();
     pollGas(); pollBalance();
   } catch(e) { log('Connect failed: ' + e.message, 'err'); }
 }
@@ -861,28 +865,59 @@ const PRICE_PROBES = [
 
 // WL price probes (no args) — global WL price stored in contract
 const WL_PRICE_PROBES = [
-  { fn:'whitelistPrice',   abi:'function whitelistPrice() view returns (uint256)' },
-  { fn:'presalePrice',     abi:'function presalePrice() view returns (uint256)' },
-  { fn:'allowlistPrice',   abi:'function allowlistPrice() view returns (uint256)' },
-  { fn:'wlPrice',          abi:'function wlPrice() view returns (uint256)' },
-  { fn:'WL_MINT_PRICE',    abi:'function WL_MINT_PRICE() view returns (uint256)' },
-  { fn:'preSalePrice',     abi:'function preSalePrice() view returns (uint256)' },
-  { fn:'privateMintPrice', abi:'function privateMintPrice() view returns (uint256)' },
-  { fn:'wlMintPrice',      abi:'function wlMintPrice() view returns (uint256)' },
-  { fn:'allowListPrice',   abi:'function allowListPrice() view returns (uint256)' },
-  { fn:'presaleCost',      abi:'function presaleCost() view returns (uint256)' },
-  { fn:'earlyMintPrice',   abi:'function earlyMintPrice() view returns (uint256)' },
-  { fn:'WHITELIST_PRICE',  abi:'function WHITELIST_PRICE() view returns (uint256)' },
+  { fn:'whitelistPrice',        abi:'function whitelistPrice() view returns (uint256)' },
+  { fn:'presalePrice',          abi:'function presalePrice() view returns (uint256)' },
+  { fn:'allowlistPrice',        abi:'function allowlistPrice() view returns (uint256)' },
+  { fn:'wlPrice',               abi:'function wlPrice() view returns (uint256)' },
+  { fn:'WL_MINT_PRICE',         abi:'function WL_MINT_PRICE() view returns (uint256)' },
+  { fn:'preSalePrice',          abi:'function preSalePrice() view returns (uint256)' },
+  { fn:'privateMintPrice',      abi:'function privateMintPrice() view returns (uint256)' },
+  { fn:'wlMintPrice',           abi:'function wlMintPrice() view returns (uint256)' },
+  { fn:'allowListPrice',        abi:'function allowListPrice() view returns (uint256)' },
+  { fn:'presaleCost',           abi:'function presaleCost() view returns (uint256)' },
+  { fn:'earlyMintPrice',        abi:'function earlyMintPrice() view returns (uint256)' },
+  { fn:'WHITELIST_PRICE',       abi:'function WHITELIST_PRICE() view returns (uint256)' },
+  { fn:'getWLPrice',            abi:'function getWLPrice() view returns (uint256)' },
+  { fn:'getPresalePrice',       abi:'function getPresalePrice() view returns (uint256)' },
+  { fn:'getAllowlistPrice',     abi:'function getAllowlistPrice() view returns (uint256)' },
+  { fn:'PRESALE_PRICE',         abi:'function PRESALE_PRICE() view returns (uint256)' },
+  { fn:'ALLOWLIST_PRICE',       abi:'function ALLOWLIST_PRICE() view returns (uint256)' },
+  { fn:'presaleMintPrice',      abi:'function presaleMintPrice() view returns (uint256)' },
+  { fn:'allowlistMintPrice',    abi:'function allowlistMintPrice() view returns (uint256)' },
+  { fn:'whitelistMintCost',     abi:'function whitelistMintCost() view returns (uint256)' },
+  { fn:'wlCost',                abi:'function wlCost() view returns (uint256)' },
+  { fn:'privateSalePrice',      abi:'function privateSalePrice() view returns (uint256)' },
+  { fn:'earlyAccessPrice',      abi:'function earlyAccessPrice() view returns (uint256)' },
+  { fn:'ogPrice',               abi:'function ogPrice() view returns (uint256)' },
+  { fn:'OG_PRICE',              abi:'function OG_PRICE() view returns (uint256)' },
+  { fn:'phase1Price',           abi:'function phase1Price() view returns (uint256)' },
+  { fn:'phase2Price',           abi:'function phase2Price() view returns (uint256)' },
+];
+
+// WL price probes with uint256 phase/stage index arg (try index 0 and 1)
+const WL_PHASE_PRICE_PROBES = [
+  { fn:'getWLPrice',       abi:'function getWLPrice(uint256 phase) view returns (uint256)' },
+  { fn:'getPriceByPhase',  abi:'function getPriceByPhase(uint256 phase) view returns (uint256)' },
+  { fn:'getPriceByStage',  abi:'function getPriceByStage(uint256 stage) view returns (uint256)' },
+  { fn:'getPhasePrice',    abi:'function getPhasePrice(uint256 phase) view returns (uint256)' },
+  { fn:'getStagePrice',    abi:'function getStagePrice(uint256 stage) view returns (uint256)' },
+  { fn:'mintPrice',        abi:'function mintPrice(uint256 phase) view returns (uint256)' },
+  { fn:'cost',             abi:'function cost(uint256 stage) view returns (uint256)' },
+  { fn:'presalePrice',     abi:'function presalePrice(uint256 phase) view returns (uint256)' },
 ];
 
 // WL price probes that take wallet address (wallet-specific WL price)
 const WL_ADDR_PRICE_PROBES = [
-  { fn:'getMintPrice',         abi:'function getMintPrice(address wallet) view returns (uint256)' },
-  { fn:'priceForAddress',      abi:'function priceForAddress(address wallet) view returns (uint256)' },
-  { fn:'getAllowListMintPrice', abi:'function getAllowListMintPrice(address wallet) view returns (uint256)' },
-  { fn:'whitelistMintPrice',   abi:'function whitelistMintPrice(address wallet) view returns (uint256)' },
-  { fn:'mintPrice',            abi:'function mintPrice(address wallet) view returns (uint256)' },
-  { fn:'getPrice',             abi:'function getPrice(address wallet) view returns (uint256)' },
+  { fn:'getMintPrice',            abi:'function getMintPrice(address wallet) view returns (uint256)' },
+  { fn:'priceForAddress',         abi:'function priceForAddress(address wallet) view returns (uint256)' },
+  { fn:'getAllowListMintPrice',   abi:'function getAllowListMintPrice(address wallet) view returns (uint256)' },
+  { fn:'whitelistMintPrice',      abi:'function whitelistMintPrice(address wallet) view returns (uint256)' },
+  { fn:'mintPrice',               abi:'function mintPrice(address wallet) view returns (uint256)' },
+  { fn:'getPrice',                abi:'function getPrice(address wallet) view returns (uint256)' },
+  { fn:'getWLMintPrice',          abi:'function getWLMintPrice(address wallet) view returns (uint256)' },
+  { fn:'getPresaleMintPrice',     abi:'function getPresaleMintPrice(address wallet) view returns (uint256)' },
+  { fn:'getUserPrice',            abi:'function getUserPrice(address wallet) view returns (uint256)' },
+  { fn:'priceOf',                 abi:'function priceOf(address wallet) view returns (uint256)' },
 ];
 
 // SeaDrop ABI for getPublicDrop
@@ -982,6 +1017,31 @@ async function fetchMintPrice(autoApply = false) {
           break;
         }
       } catch {}
+    }
+  }
+
+  // ── 5. WL price via phase/stage index (try index 0 and 1) ─────────────────
+  if (!_wlMintPrice) {
+    log('Checking phase/stage-indexed WL prices...', 'info');
+    for (const probe of WL_PHASE_PRICE_PROBES) {
+      for (const idx of [0, 1]) {
+        try {
+          const ct = new ethers.Contract(addr, [probe.abi], provider);
+          const v  = await ct[probe.fn](idx);
+          if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+            // Only treat as WL price if it differs from public price (or no public price)
+            const asEth = ethers.utils.formatEther(v);
+            if (!_publicMintPrice || asEth !== _publicMintPrice) {
+              _wlMintPrice = asEth;
+              document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH (phase ' + idx + ')';
+              document.getElementById('applyWLBtn').disabled = false;
+              log('Phase WL price via ' + probe.fn + '(' + idx + '): ' + _wlMintPrice + ' ETH', 'ok');
+              break;
+            }
+          }
+        } catch {}
+      }
+      if (_wlMintPrice) break;
     }
   }
 
@@ -1643,10 +1703,53 @@ function renderTxTable() {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+// ─── PERSIST WALLET SETTINGS ─────────────────────────────
+const STORE_KEY = 'minter_saved_v1';
+
+function saveWalletSettings() {
+  try {
+    const pk  = document.getElementById('privKey').value.trim();
+    const sel = document.getElementById('rpcPreset').value;
+    const cus = document.getElementById('customRpc').value.trim();
+    if (pk) {
+      localStorage.setItem(STORE_KEY, JSON.stringify({ pk, sel, cus }));
+    }
+  } catch {}
+}
+
+function loadWalletSettings() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    if (s.pk) {
+      document.getElementById('privKey').value = s.pk;
+    }
+    if (s.sel) {
+      document.getElementById('rpcPreset').value = s.sel;
+      if (s.sel === 'custom') {
+        document.getElementById('customRpcWrap').style.display = 'block';
+        document.getElementById('customRpc').value = s.cus || '';
+      }
+    }
+    log('Saved credentials restored — click CONNECT to reconnect', 'warn');
+  } catch {}
+}
+
+function clearSavedSettings() {
+  localStorage.removeItem(STORE_KEY);
+  document.getElementById('privKey').value = '';
+  document.getElementById('rpcPreset').value = '';
+  document.getElementById('customRpc').value = '';
+  document.getElementById('customRpcWrap').style.display = 'none';
+  log('Saved credentials cleared', 'warn');
+}
+
 // ─── BOOT ────────────────────────────────────────────────
 window.onload = () => {
   log('Minter initialized — connect wallet to begin', 'info');
   log('Auto ABI detection available after entering contract address', 'info');
+  loadWalletSettings();
 };
 </script>
 </body>
