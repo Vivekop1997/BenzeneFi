@@ -3,523 +3,542 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFT Mint Bot</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Minter — EVM NFT Bot</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
-  :root {
-    --bg: #080b10;
-    --bg2: #0d1117;
-    --bg3: #111820;
-    --border: #1e2d3d;
-    --accent: #00f5c4;
-    --accent2: #0094ff;
-    --accent3: #ff3e6c;
-    --warn: #ffaa00;
-    --text: #c9d8e8;
-    --dim: #4a6278;
-    --mono: 'Share Tech Mono', monospace;
-    --ui: 'Rajdhani', sans-serif;
-  }
+:root {
+  --white: #ffffff;
+  --black: #0a0a0a;
+  --orange: #ff4d00;
+  --orange-light: #fff0eb;
+  --gray: #f2f2f0;
+  --gray2: #e8e8e4;
+  --gray3: #b0b0a8;
+  --gray4: #6b6b60;
+  --border: #e0e0d8;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --display: 'Bebas Neue', sans-serif;
+  --red: #e8291a;
+  --green: #1a7a4a;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+html { scroll-behavior: smooth; }
 
-  /* scanline overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.07) 2px,
-      rgba(0,0,0,0.07) 4px
-    );
-    pointer-events: none;
-    z-index: 9999;
-  }
+body {
+  background: var(--white);
+  color: var(--black);
+  font-family: var(--sans);
+  min-height: 100vh;
+  cursor: default;
+}
 
-  .container {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 24px 16px 60px;
-  }
+/* HEADER */
+.site-header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--white);
+  border-bottom: 1.5px solid var(--black);
+  display: flex; align-items: center;
+  padding: 0 32px;
+  height: 56px;
+}
 
-  /* HEADER */
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 18px 0 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 28px;
-  }
+.site-logo {
+  font-family: var(--display);
+  font-size: 28px;
+  letter-spacing: 2px;
+  color: var(--black);
+  flex: 1;
+}
+.site-logo span { color: var(--orange); }
 
-  .logo-box {
-    width: 42px; height: 42px;
-    border: 1.5px solid var(--accent);
-    display: flex; align-items: center; justify-content: center;
-    position: relative;
-    animation: pulse 3s infinite;
-  }
-  .logo-box svg { width: 22px; height: 22px; fill: var(--accent); }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 6px var(--accent); }
-    50% { box-shadow: 0 0 18px var(--accent), 0 0 40px rgba(0,245,196,0.2); }
-  }
+.header-nav {
+  display: flex; align-items: center; gap: 32px;
+  font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+  font-weight: 500;
+}
 
-  .header-title h1 {
-    font-family: var(--ui);
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: #fff;
-  }
-  .header-title p {
-    font-size: 11px;
-    color: var(--dim);
-    letter-spacing: 1.5px;
-    margin-top: 2px;
-  }
+.nav-status {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--gray4);
+}
+.nav-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gray3);
+  transition: all 0.3s;
+}
+.nav-dot.on { background: var(--green); box-shadow: 0 0 0 3px rgba(26,122,74,0.15); }
+.nav-dot.minting { background: var(--orange); box-shadow: 0 0 0 3px rgba(255,77,0,0.15); animation: pulse-dot 1s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
 
-  .status-badge {
-    margin-left: auto;
-    display: flex; align-items: center; gap: 7px;
-    font-size: 11px;
-    letter-spacing: 1px;
-    color: var(--dim);
-    font-family: var(--ui);
-  }
-  .status-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--dim);
-    transition: all 0.3s;
-  }
-  .status-dot.connected { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-  .status-dot.active { background: var(--warn); box-shadow: 0 0 8px var(--warn); animation: blink 1s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* HERO */
+.hero {
+  border-bottom: 1.5px solid var(--black);
+  padding: 48px 32px 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  min-height: 220px;
+  position: relative;
+  overflow: hidden;
+}
 
-  /* GRID */
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-bottom: 14px;
-  }
-  @media(max-width:600px){ .grid { grid-template-columns: 1fr; } }
+.hero-left { padding-right: 32px; border-right: 1.5px solid var(--black); }
 
-  .card {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 18px;
-    position: relative;
-    overflow: hidden;
-  }
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0.4;
-  }
-  .card.full { grid-column: 1 / -1; }
-  .card.danger::before { background: linear-gradient(90deg, transparent, var(--accent3), transparent); }
-  .card.warn::before { background: linear-gradient(90deg, transparent, var(--warn), transparent); }
+.hero-tag {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--orange); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.hero-tag::before { content: '—'; }
 
-  .card-label {
-    font-family: var(--ui);
-    font-size: 10px;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    color: var(--dim);
-    margin-bottom: 12px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  .card-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+.hero-title {
+  font-family: var(--display);
+  font-size: clamp(72px, 10vw, 120px);
+  line-height: 0.9;
+  color: var(--black);
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+}
+.hero-title .accent { color: var(--orange); }
 
-  /* INPUTS */
-  .field { margin-bottom: 12px; }
-  .field:last-child { margin-bottom: 0; }
+.hero-desc {
+  font-size: 13px; line-height: 1.6;
+  color: var(--gray4); max-width: 360px;
+  font-weight: 300;
+}
 
-  label {
-    display: block;
-    font-size: 10px;
-    letter-spacing: 1.5px;
-    color: var(--dim);
-    margin-bottom: 5px;
-    text-transform: uppercase;
-    font-family: var(--ui);
-  }
+.hero-right {
+  padding-left: 40px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
 
-  input, select, textarea {
-    width: 100%;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 8px 10px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 1px rgba(0,245,196,0.1);
-  }
-  select option { background: var(--bg3); }
-  textarea { resize: vertical; min-height: 70px; }
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border); border: 1.5px solid var(--black);
+  margin-top: auto;
+}
+.stat-cell {
+  background: var(--white);
+  padding: 18px 20px;
+}
+.stat-num {
+  font-family: var(--display); font-size: 40px;
+  line-height: 1; color: var(--black);
+  transition: color 0.3s;
+}
+.stat-num.active { color: var(--orange); }
+.stat-lbl {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: var(--gray3); margin-top: 4px;
+}
 
-  .input-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
+/* MAIN LAYOUT */
+.main {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  min-height: calc(100vh - 56px - 220px);
+}
 
-  /* TOGGLE */
-  .toggle-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 10px;
-  }
-  .toggle-row:last-child { border-bottom: none; margin-bottom: 0; }
-  .toggle-label { flex: 1; font-size: 12px; color: var(--text); }
-  .toggle-desc { font-size: 10px; color: var(--dim); margin-top: 1px; }
+@media(max-width: 768px) {
+  .main { grid-template-columns: 1fr; }
+  .hero { grid-template-columns: 1fr; }
+  .hero-left { border-right: none; border-bottom: 1.5px solid var(--black); padding-right: 0; padding-bottom: 24px; margin-bottom: 24px; }
+  .hero-right { padding-left: 0; }
+}
 
-  .toggle {
-    position: relative;
-    width: 38px; height: 20px;
-    flex-shrink: 0;
-  }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider {
-    position: absolute; inset: 0;
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: 0.2s;
-  }
-  .toggle-slider::before {
-    content: '';
-    position: absolute;
-    width: 12px; height: 12px;
-    left: 3px; top: 3px;
-    background: var(--dim);
-    transition: 0.2s;
-  }
-  .toggle input:checked + .toggle-slider { border-color: var(--accent); background: rgba(0,245,196,0.1); }
-  .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--accent); }
+/* SIDEBAR */
+.sidebar {
+  border-right: 1.5px solid var(--black);
+  display: flex; flex-direction: column;
+}
 
-  /* BUTTONS */
-  .btn-row {
-    display: flex; gap: 10px;
-    margin-top: 14px;
-  }
+.section {
+  border-bottom: 1.5px solid var(--black);
+  padding: 28px 28px 24px;
+}
+.section:last-child { border-bottom: none; flex: 1; }
 
-  .btn {
-    flex: 1;
-    padding: 12px;
-    font-family: var(--ui);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 2.5px;
-    text-transform: uppercase;
-    border: none;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.2s;
-  }
-  .btn::before {
-    content: '';
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%,-50%) scale(0);
-    width: 200%; padding-top: 200%;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
-    transition: transform 0.4s;
-  }
-  .btn:active::before { transform: translate(-50%,-50%) scale(1); }
+.section-label {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gray3); margin-bottom: 20px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
-  .btn-primary {
-    background: var(--accent);
-    color: #000;
-    box-shadow: 0 0 20px rgba(0,245,196,0.25);
-  }
-  .btn-primary:hover { box-shadow: 0 0 30px rgba(0,245,196,0.4); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+/* FORM ELEMENTS */
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
 
-  .btn-outline {
-    background: transparent;
-    color: var(--accent);
-    border: 1px solid var(--accent);
-  }
-  .btn-outline:hover { background: rgba(0,245,196,0.07); }
+label {
+  display: block; font-size: 10px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--gray4); margin-bottom: 6px;
+  font-weight: 500;
+}
 
-  .btn-danger {
-    background: transparent;
-    color: var(--accent3);
-    border: 1px solid var(--accent3);
-  }
-  .btn-danger:hover { background: rgba(255,62,108,0.07); }
+input[type=text], input[type=password], input[type=number],
+input[type=datetime-local], select, textarea {
+  width: 100%; background: var(--gray);
+  border: 1.5px solid var(--border);
+  color: var(--black); font-family: var(--mono);
+  font-size: 12px; padding: 10px 12px;
+  outline: none; transition: border-color 0.15s, background 0.15s;
+  -webkit-appearance: none; appearance: none;
+  border-radius: 0;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--black); background: var(--white);
+}
+select { cursor: pointer; }
+textarea { resize: vertical; min-height: 72px; }
 
-  /* STATUS BAR */
-  .status-bar {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    padding: 10px 14px;
-    margin-bottom: 14px;
-    display: flex; align-items: center; gap: 12px;
-    font-size: 11px;
-  }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-  .stat { display: flex; flex-direction: column; }
-  .stat-val { color: var(--accent); font-size: 15px; font-weight: bold; }
-  .stat-key { color: var(--dim); font-size: 9px; letter-spacing: 1px; font-family: var(--ui); text-transform: uppercase; }
-  .stat-sep { width: 1px; height: 30px; background: var(--border); }
+/* ABI DETECTOR */
+.abi-detect-btn {
+  width: 100%; padding: 9px;
+  background: var(--black); color: var(--white);
+  border: none; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+  cursor: pointer; margin-top: 8px;
+  transition: background 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.abi-detect-btn:hover { background: var(--orange); }
+.abi-detect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* TERMINAL */
-  .terminal {
-    background: #050810;
-    border: 1px solid var(--border);
-    padding: 14px;
-    height: 260px;
-    overflow-y: auto;
-    font-size: 11.5px;
-    line-height: 1.7;
-    scroll-behavior: smooth;
-  }
-  .terminal::-webkit-scrollbar { width: 4px; }
-  .terminal::-webkit-scrollbar-thumb { background: var(--border); }
+.abi-result {
+  margin-top: 10px; padding: 10px 12px;
+  background: var(--orange-light); border: 1.5px solid var(--orange);
+  font-family: var(--mono); font-size: 10px; color: var(--black);
+  display: none; line-height: 1.5;
+}
+.abi-result.visible { display: block; }
 
-  .log { display: flex; gap: 10px; }
-  .log-time { color: var(--dim); flex-shrink: 0; }
-  .log-tag {
-    flex-shrink: 0;
-    font-family: var(--ui);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    padding: 1px 6px;
-    align-self: flex-start;
-    margin-top: 2px;
-  }
-  .tag-info { background: rgba(0,148,255,0.15); color: var(--accent2); border: 1px solid rgba(0,148,255,0.3); }
-  .tag-ok { background: rgba(0,245,196,0.1); color: var(--accent); border: 1px solid rgba(0,245,196,0.3); }
-  .tag-err { background: rgba(255,62,108,0.1); color: var(--accent3); border: 1px solid rgba(255,62,108,0.3); }
-  .tag-warn { background: rgba(255,170,0,0.1); color: var(--warn); border: 1px solid rgba(255,170,0,0.3); }
-  .tag-tx { background: rgba(138,43,226,0.15); color: #c084fc; border: 1px solid rgba(138,43,226,0.4); }
-  .log-msg { color: var(--text); word-break: break-all; }
-  .log-msg a { color: var(--accent2); text-decoration: none; }
-  .log-msg a:hover { text-decoration: underline; }
+/* TOGGLE */
+.toggle-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info { flex: 1; }
+.toggle-name { font-size: 12px; font-weight: 500; color: var(--black); }
+.toggle-sub { font-size: 10px; color: var(--gray3); margin-top: 1px; font-family: var(--mono); }
 
-  .terminal-prompt {
-    display: flex; align-items: center; gap: 8px;
-    padding-top: 10px;
-    border-top: 1px solid var(--border);
-    margin-top: 6px;
-    color: var(--accent);
-    font-size: 12px;
-  }
-  .cursor { animation: blink 1s infinite; }
+.tgl { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.tgl input { opacity: 0; width: 0; height: 0; }
+.tgl-track {
+  position: absolute; inset: 0;
+  background: var(--gray2); border: 1.5px solid var(--border);
+  cursor: pointer; transition: 0.2s;
+}
+.tgl-track::before {
+  content: ''; position: absolute;
+  width: 14px; height: 14px; left: 3px; top: 2px;
+  background: var(--gray3); transition: 0.2s;
+}
+.tgl input:checked + .tgl-track { background: var(--black); border-color: var(--black); }
+.tgl input:checked + .tgl-track::before { transform: translateX(18px); background: var(--white); }
 
-  /* TX HISTORY */
-  .tx-list { display: flex; flex-direction: column; gap: 6px; }
-  .tx-item {
-    background: var(--bg3);
-    border: 1px solid var(--border);
-    padding: 8px 12px;
-    display: flex; align-items: center; gap: 10px;
-    font-size: 11px;
-    animation: slideIn 0.3s ease;
-  }
-  @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+/* CONTENT AREA */
+.content { display: flex; flex-direction: column; }
 
-  .tx-hash { flex: 1; color: var(--accent2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tx-hash a { color: inherit; text-decoration: none; }
-  .tx-hash a:hover { text-decoration: underline; }
-  .tx-status {
-    font-family: var(--ui);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    padding: 2px 8px;
-  }
-  .tx-status.pending { color: var(--warn); border: 1px solid var(--warn); }
-  .tx-status.success { color: var(--accent); border: 1px solid var(--accent); }
-  .tx-status.failed { color: var(--accent3); border: 1px solid var(--accent3); }
+/* ACTION BAR */
+.action-bar {
+  border-bottom: 1.5px solid var(--black);
+  display: grid; grid-template-columns: 1fr 1fr 1fr 120px;
+  background: var(--white);
+}
 
-  .warn-box {
-    background: rgba(255,170,0,0.06);
-    border: 1px solid rgba(255,170,0,0.25);
-    padding: 10px 14px;
-    font-size: 11px;
-    color: var(--warn);
-    line-height: 1.6;
-    margin-bottom: 14px;
-  }
-  .warn-box strong { display: block; margin-bottom: 4px; font-family: var(--ui); letter-spacing: 1px; }
+.action-btn {
+  padding: 20px 16px;
+  border: none; border-right: 1.5px solid var(--black);
+  background: var(--white); cursor: pointer;
+  font-family: var(--display); font-size: 18px;
+  letter-spacing: 2px; color: var(--black);
+  transition: all 0.15s;
+  display: flex; flex-direction: column; gap: 4px;
+  align-items: flex-start;
+}
+.action-btn:last-child { border-right: none; }
+.action-btn:hover:not(:disabled) { background: var(--black); color: var(--white); }
+.action-btn.primary:hover:not(:disabled) { background: var(--orange); color: var(--white); }
+.action-btn.danger:hover:not(:disabled) { background: var(--red); color: var(--white); }
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-btn .btn-sub {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  opacity: 0.5; font-weight: 400;
+}
 
-  .empty-state {
-    text-align: center;
-    padding: 24px;
-    color: var(--dim);
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
+/* TERMINAL */
+.terminal-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  border-bottom: 1.5px solid var(--black);
+}
+.terminal-header {
+  padding: 14px 24px;
+  border-bottom: 1.5px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.terminal-title {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--gray4);
+  flex: 1;
+}
+.terminal-clear {
+  font-family: var(--mono); font-size: 9px;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--gray3); background: none; border: none;
+  cursor: pointer; padding: 2px 6px;
+  transition: color 0.15s;
+}
+.terminal-clear:hover { color: var(--red); }
+
+.terminal {
+  flex: 1; min-height: 260px; max-height: 340px;
+  overflow-y: auto; padding: 16px 24px;
+  background: var(--white); font-family: var(--mono);
+  font-size: 11.5px; line-height: 1.8;
+}
+.terminal::-webkit-scrollbar { width: 3px; }
+.terminal::-webkit-scrollbar-thumb { background: var(--border); }
+
+.log-line { display: flex; gap: 12px; align-items: flex-start; }
+.log-ts { color: var(--gray3); flex-shrink: 0; font-size: 10px; padding-top: 2px; }
+.log-badge {
+  flex-shrink: 0; font-size: 9px; letter-spacing: 1.5px;
+  text-transform: uppercase; font-weight: 500;
+  padding: 2px 7px; margin-top: 1px;
+  font-family: var(--sans);
+}
+.badge-info { background: #e8f0fe; color: #1a56c4; }
+.badge-ok { background: #e6f4ec; color: var(--green); }
+.badge-err { background: #fde8e8; color: var(--red); }
+.badge-warn { background: #fff3e0; color: #cc6600; }
+.badge-tx { background: var(--black); color: var(--white); }
+.log-text { color: var(--black); word-break: break-all; font-size: 11px; }
+.log-text a { color: var(--orange); text-decoration: none; border-bottom: 1px solid currentColor; }
+
+.terminal-footer {
+  padding: 10px 24px;
+  border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px;
+  color: var(--gray3); display: flex; gap: 6px; align-items: center;
+}
+.caret { color: var(--black); animation: blink-c 1.2s step-end infinite; }
+@keyframes blink-c { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* TX TABLE */
+.tx-section { flex: 0 0 auto; }
+.tx-header {
+  padding: 14px 24px;
+  border-bottom: 1.5px solid var(--border);
+  display: flex; align-items: center; gap: 12px;
+}
+.tx-title {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--gray4);
+  flex: 1;
+}
+.tx-count {
+  font-family: var(--display); font-size: 20px; color: var(--orange);
+}
+
+.tx-table { width: 100%; }
+.tx-row {
+  display: grid; grid-template-columns: 60px 1fr 120px 100px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px; font-size: 11px;
+  animation: row-in 0.25s ease;
+  align-items: center;
+}
+@keyframes row-in { from { opacity:0; background: var(--orange-light); } to { opacity:1; background: var(--white); } }
+.tx-row:last-child { border-bottom: none; }
+.tx-idx { font-family: var(--display); font-size: 16px; color: var(--gray3); }
+.tx-hash-cell { font-family: var(--mono); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tx-hash-cell a { color: var(--orange); text-decoration: none; }
+.tx-hash-cell a:hover { text-decoration: underline; }
+.tx-time { font-family: var(--mono); font-size: 10px; color: var(--gray3); }
+.tx-badge {
+  font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 3px 10px; font-weight: 600; text-align: center;
+  font-family: var(--sans);
+}
+.tx-badge.pending { background: #fff3e0; color: #cc6600; }
+.tx-badge.success { background: #e6f4ec; color: var(--green); }
+.tx-badge.failed { background: #fde8e8; color: var(--red); }
+
+.tx-empty {
+  padding: 32px 24px; text-align: center;
+  font-family: var(--mono); font-size: 11px; color: var(--gray3);
+  letter-spacing: 1px;
+}
+
+/* COUNTDOWN */
+.sched-countdown {
+  font-family: var(--display); font-size: 32px;
+  color: var(--orange); letter-spacing: 2px;
+  margin-top: 8px; display: none;
+}
+
+/* WARN BANNER */
+.warn-banner {
+  background: var(--orange-light);
+  border-bottom: 1.5px solid var(--orange);
+  padding: 10px 32px;
+  font-size: 11px; color: var(--black);
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+}
+.warn-banner strong { color: var(--orange); }
 </style>
 </head>
 <body>
-<div class="container">
 
-  <!-- HEADER -->
-  <div class="header">
-    <div class="logo-box">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-      </svg>
-    </div>
-    <div class="header-title">
-      <h1>MintBot EVM</h1>
-      <p>NFT CONTRACT MINTING ENGINE // v1.0</p>
-    </div>
-    <div class="status-badge">
-      <div class="status-dot" id="statusDot"></div>
-      <span id="statusText">OFFLINE</span>
+<!-- HEADER -->
+<header class="site-header">
+  <div class="site-logo">MINTER<span>.</span></div>
+  <div class="header-nav">
+    <div class="nav-status">
+      <div class="nav-dot" id="navDot"></div>
+      <span id="navStatus">OFFLINE</span>
     </div>
   </div>
+</header>
 
-  <!-- WARNING -->
-  <div class="warn-box">
-    <strong>⚠ SECURITY NOTICE</strong>
-    Your private key is used locally in-browser only and never transmitted. Use a dedicated burner wallet. This tool is for educational purposes — always verify contracts before minting.
+<!-- WARN -->
+<div class="warn-banner">
+  <strong>SECURITY</strong> — Private key stays in your browser only. Use a dedicated burner wallet. Never share keys.
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">EVM NFT Minting Engine</div>
+    <div class="hero-title">MINT<br><span class="accent">BOT</span></div>
+    <p class="hero-desc">Automated NFT contract interaction with auto ABI detection, simulation, scheduling, and real-time transaction tracking.</p>
   </div>
-
-  <!-- STATS BAR -->
-  <div class="status-bar">
-    <div class="stat">
-      <span class="stat-val" id="statNetwork">—</span>
-      <span class="stat-key">Network</span>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <span class="stat-val" id="statBalance">—</span>
-      <span class="stat-key">Balance</span>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <span class="stat-val" id="statGas">—</span>
-      <span class="stat-key">Gas (gwei)</span>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <span class="stat-val" id="statMints">0</span>
-      <span class="stat-key">Mints Sent</span>
-    </div>
-    <div class="stat-sep"></div>
-    <div class="stat">
-      <span class="stat-val" id="statSuccess">0</span>
-      <span class="stat-key">Confirmed</span>
+  <div class="hero-right">
+    <div class="stats-grid">
+      <div class="stat-cell">
+        <div class="stat-num" id="sNetwork">—</div>
+        <div class="stat-lbl">Network</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num" id="sBalance">—</div>
+        <div class="stat-lbl">Balance (ETH)</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num" id="sGas">—</div>
+        <div class="stat-lbl">Gas (Gwei)</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num" id="sMints">0</div>
+        <div class="stat-lbl">Confirmed Mints</div>
+      </div>
     </div>
   </div>
+</div>
 
-  <!-- WALLET + RPC -->
-  <div class="grid">
-    <div class="card">
-      <div class="card-label">Wallet Config</div>
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <!-- WALLET -->
+    <div class="section">
+      <div class="section-label">01 — Wallet</div>
       <div class="field">
         <label>Private Key</label>
         <input type="password" id="privKey" placeholder="0x..." autocomplete="off">
       </div>
       <div class="field">
         <label>RPC Endpoint</label>
-        <select id="rpcPreset" onchange="setRpcPreset()">
+        <select id="rpcPreset" onchange="rpcChange()">
           <option value="">— Select Network —</option>
-          <option value="https://mainnet.infura.io/v3/YOUR_KEY">Ethereum Mainnet (Infura)</option>
-          <option value="https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY">Ethereum Mainnet (Alchemy)</option>
-          <option value="https://polygon-mainnet.infura.io/v3/YOUR_KEY">Polygon (Infura)</option>
-          <option value="https://arb1.arbitrum.io/rpc">Arbitrum One</option>
-          <option value="https://mainnet.base.org">Base</option>
-          <option value="custom">Custom RPC...</option>
+          <option value="https://cloudflare-eth.com">ETH Mainnet (Cloudflare — Free)</option>
+          <option value="https://rpc.ankr.com/eth">ETH Mainnet (Ankr — Free)</option>
+          <option value="https://polygon-rpc.com">Polygon (Free)</option>
+          <option value="https://arb1.arbitrum.io/rpc">Arbitrum One (Free)</option>
+          <option value="https://mainnet.base.org">Base (Free)</option>
+          <option value="https://rpc.sepolia.org">Sepolia Testnet</option>
+          <option value="custom">Custom RPC URL...</option>
         </select>
       </div>
-      <div class="field" id="customRpcField" style="display:none">
-        <label>Custom RPC URL</label>
-        <input type="text" id="customRpc" placeholder="https://...">
+      <div class="field" id="customRpcWrap" style="display:none">
+        <label>Custom RPC</label>
+        <input type="text" id="customRpc" placeholder="https://eth-mainnet.g.alchemy.com/v2/...">
       </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="connect()">CONNECT</button>
-        <button class="btn btn-danger" onclick="disconnect()">DISCONNECT</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+        <button onclick="connect()" style="padding:11px;background:var(--black);color:var(--white);border:none;font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--orange)'" onmouseout="this.style.background='var(--black)'">CONNECT</button>
+        <button onclick="disconnect()" style="padding:11px;background:var(--white);color:var(--black);border:1.5px solid var(--black);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s" onmouseover="this.style.background='var(--red)';this.style.color='var(--white)';this.style.borderColor='var(--red)'" onmouseout="this.style.background='var(--white)';this.style.color='var(--black)';this.style.borderColor='var(--black)'">DISCONNECT</button>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-label">Contract Config</div>
+    <!-- CONTRACT -->
+    <div class="section">
+      <div class="section-label">02 — Contract</div>
       <div class="field">
         <label>Contract Address</label>
-        <input type="text" id="contractAddr" placeholder="0x...">
+        <input type="text" id="contractAddr" placeholder="0x..." oninput="onContractInput()">
+        <button class="abi-detect-btn" id="detectBtn" onclick="detectABI()" disabled>
+          <span id="detectBtnTxt">⬡ AUTO-DETECT ABI</span>
+        </button>
+        <div class="abi-result" id="abiResult"></div>
       </div>
       <div class="field">
-        <label>Mint Function ABI (JSON)</label>
+        <label>Mint Function ABI</label>
         <textarea id="mintAbi" placeholder='["function mint(uint256 qty) payable"]'></textarea>
       </div>
       <div class="field">
         <label>Mint Function Name</label>
-        <input type="text" id="mintFn" value="mint" placeholder="mint">
+        <input type="text" id="mintFn" value="mint" placeholder="mint / mintSeaDrop / presaleMint">
       </div>
     </div>
-  </div>
 
-  <!-- MINT PARAMS -->
-  <div class="grid">
-    <div class="card">
-      <div class="card-label">Mint Parameters</div>
-      <div class="input-row">
+    <!-- PARAMS -->
+    <div class="section">
+      <div class="section-label">03 — Parameters</div>
+      <div class="row2">
         <div class="field">
           <label>Quantity</label>
           <input type="number" id="mintQty" value="1" min="1">
         </div>
         <div class="field">
-          <label>Mint Price (ETH)</label>
+          <label>Price (ETH)</label>
           <input type="text" id="mintPrice" value="0" placeholder="0.08">
         </div>
       </div>
       <div class="field">
-        <label>Function Arguments (comma separated, leave blank if only qty)</label>
-        <input type="text" id="mintArgs" placeholder="e.g. 1  or  1, 0xabcd...">
+        <label>Function Arguments (comma separated)</label>
+        <input type="text" id="mintArgs" placeholder="leave blank for qty-only mint">
       </div>
     </div>
 
-    <div class="card warn">
-      <div class="card-label">Gas Settings</div>
-      <div class="input-row">
+    <!-- GAS -->
+    <div class="section">
+      <div class="section-label">04 — Gas</div>
+      <div class="row2">
         <div class="field">
-          <label>Max Fee (gwei)</label>
+          <label>Max Fee (Gwei)</label>
           <input type="number" id="maxFee" value="100">
         </div>
         <div class="field">
-          <label>Priority Fee (gwei)</label>
+          <label>Priority (Gwei)</label>
           <input type="number" id="priorityFee" value="2">
         </div>
       </div>
-      <div class="input-row">
+      <div class="row2">
         <div class="field">
           <label>Gas Limit</label>
           <input type="number" id="gasLimit" value="300000">
@@ -530,225 +549,314 @@
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- OPTIONS -->
-  <div class="grid">
-    <div class="card">
-      <div class="card-label">Bot Options</div>
+    <!-- OPTIONS -->
+    <div class="section">
+      <div class="section-label">05 — Options</div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Auto-Retry on Fail</div>
-          <div class="toggle-desc">Retry failed transactions automatically</div>
+        <div class="toggle-info">
+          <div class="toggle-name">Simulate First</div>
+          <div class="toggle-sub">callStatic dry run before broadcast</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="optRetry"><span class="toggle-slider"></span></label>
+        <label class="tgl"><input type="checkbox" id="optSim" checked><span class="tgl-track"></span></label>
       </div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Watch for Unpause</div>
-          <div class="toggle-desc">Poll paused() state and fire when unpaused</div>
+        <div class="toggle-info">
+          <div class="toggle-name">Auto-Retry</div>
+          <div class="toggle-sub">Retry failed txns automatically</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="optUnpause"><span class="toggle-slider"></span></label>
+        <label class="tgl"><input type="checkbox" id="optRetry"><span class="tgl-track"></span></label>
       </div>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Simulate Before Send</div>
-          <div class="toggle-desc">callStatic test before broadcasting</div>
+        <div class="toggle-info">
+          <div class="toggle-name">Watch Unpause</div>
+          <div class="toggle-sub">Poll paused() and fire on unpause</div>
         </div>
-        <label class="toggle"><input type="checkbox" id="optSimulate" checked><span class="toggle-slider"></span></label>
+        <label class="tgl"><input type="checkbox" id="optUnpause"><span class="tgl-track"></span></label>
       </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Scheduled Mint</div>
-      <div class="field">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Scheduler</div>
+          <div class="toggle-sub">Fire at exact datetime</div>
+        </div>
+        <label class="tgl"><input type="checkbox" id="optSched"><span class="tgl-track"></span></label>
+      </div>
+      <div class="field" style="margin-top:12px">
         <label>Target Time (local)</label>
         <input type="datetime-local" id="schedTime">
+        <div class="sched-countdown" id="schedCountdown"></div>
       </div>
-      <div class="toggle-row" style="margin-top:6px">
-        <div>
-          <div class="toggle-label">Enable Scheduler</div>
-          <div class="toggle-desc">Fire mint tx at exact scheduled time</div>
-        </div>
-        <label class="toggle"><input type="checkbox" id="optSchedule"><span class="toggle-slider"></span></label>
+    </div>
+
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ACTION BAR -->
+    <div class="action-bar">
+      <button class="action-btn primary" id="execBtn" onclick="executeMint()" disabled>
+        EXECUTE
+        <span class="btn-sub">Run mint transaction</span>
+      </button>
+      <button class="action-btn" id="simBtn" onclick="simulateMint()" disabled>
+        SIMULATE
+        <span class="btn-sub">Dry run callStatic</span>
+      </button>
+      <button class="action-btn" id="checkBtn" onclick="checkContract()" disabled>
+        INSPECT
+        <span class="btn-sub">Read contract state</span>
+      </button>
+      <button class="action-btn danger" onclick="stopBot()">
+        STOP
+        <span class="btn-sub">Halt all activity</span>
+      </button>
+    </div>
+
+    <!-- TERMINAL -->
+    <div class="terminal-wrap">
+      <div class="terminal-header">
+        <span class="terminal-title">Terminal Log</span>
+        <button class="terminal-clear" onclick="clearLog()">CLEAR</button>
       </div>
-      <div id="countdown" style="font-size:12px; color:var(--warn); margin-top:8px;"></div>
+      <div class="terminal" id="terminal"></div>
+      <div class="terminal-footer">
+        <span style="color:var(--gray3)">minter</span>
+        <span style="color:var(--gray3)">@</span>
+        <span style="color:var(--black)" id="netLabel">evm</span>
+        <span style="color:var(--gray3)">:~$</span>
+        <span class="caret">█</span>
+      </div>
     </div>
-  </div>
 
-  <!-- ACTIONS -->
-  <div class="card full" style="margin-bottom:14px;">
-    <div class="card-label">Actions</div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="mintBtn" onclick="executeMint()" disabled>▶ EXECUTE MINT</button>
-      <button class="btn btn-outline" onclick="simulateMint()" id="simBtn" disabled>⬡ SIMULATE</button>
-      <button class="btn btn-outline" onclick="checkContract()" id="checkBtn" disabled>⬡ CHECK CONTRACT</button>
-      <button class="btn btn-danger" onclick="stopBot()">■ STOP</button>
+    <!-- TX TABLE -->
+    <div class="tx-section">
+      <div class="tx-header">
+        <span class="tx-title">Transaction History</span>
+        <span class="tx-count" id="txCount">0</span>
+      </div>
+      <div id="txTable">
+        <div class="tx-empty">NO TRANSACTIONS YET</div>
+      </div>
     </div>
-  </div>
 
-  <!-- TERMINAL LOG -->
-  <div class="card full" style="margin-bottom:14px;">
-    <div class="card-label">Terminal Log</div>
-    <div class="terminal" id="terminal"></div>
-    <div class="terminal-prompt">
-      <span style="color:var(--dim)">mintbot@evm</span>
-      <span>:~$</span>
-      <span class="cursor">█</span>
-    </div>
   </div>
-
-  <!-- TX HISTORY -->
-  <div class="card full">
-    <div class="card-label">Transaction History</div>
-    <div class="tx-list" id="txList">
-      <div class="empty-state">NO TRANSACTIONS YET</div>
-    </div>
-  </div>
-
 </div>
 
 <script>
-let provider, wallet, contract, botActive = false;
-let mintCount = 0, successCount = 0;
+// ─── STATE ───────────────────────────────────────────────
+let provider, wallet, botActive = false;
+let mintCount = 0, txTotal = 0;
 let schedInterval = null, countdownInterval = null;
-let networkName = '—', explorerBase = 'https://etherscan.io/tx/';
+let explorerBase = 'https://etherscan.io/tx/';
 
-const NETWORKS = {
-  1: { name: 'ETH Mainnet', explorer: 'https://etherscan.io/tx/' },
-  137: { name: 'Polygon', explorer: 'https://polygonscan.com/tx/' },
-  42161: { name: 'Arbitrum', explorer: 'https://arbiscan.io/tx/' },
-  8453: { name: 'Base', explorer: 'https://basescan.org/tx/' },
-  11155111: { name: 'Sepolia', explorer: 'https://sepolia.etherscan.io/tx/' },
+const NETS = {
+  1:        { name:'ETH',      explorer:'https://etherscan.io/tx/' },
+  137:      { name:'MATIC',    explorer:'https://polygonscan.com/tx/' },
+  42161:    { name:'ARB',      explorer:'https://arbiscan.io/tx/' },
+  8453:     { name:'BASE',     explorer:'https://basescan.org/tx/' },
+  11155111: { name:'SEPOLIA',  explorer:'https://sepolia.etherscan.io/tx/' },
+  10:       { name:'OP',       explorer:'https://optimistic.etherscan.io/tx/' },
 };
 
-function ts() {
-  return new Date().toTimeString().slice(0,8);
-}
+// ─── UTILS ───────────────────────────────────────────────
+function ts() { return new Date().toTimeString().slice(0,8); }
 
 function log(msg, type='info') {
   const t = document.getElementById('terminal');
-  const tagMap = { info:'tag-info', ok:'tag-ok', err:'tag-err', warn:'tag-warn', tx:'tag-tx' };
-  const labelMap = { info:'INFO', ok:'OK', err:'ERR', warn:'WARN', tx:'TX' };
+  const map = { info:'badge-info INFO', ok:'badge-ok OK', err:'badge-err ERR', warn:'badge-warn WARN', tx:'badge-tx TX' };
+  const [cls, lbl] = map[type].split(' ');
   const div = document.createElement('div');
-  div.className = 'log';
-  div.innerHTML = `<span class="log-time">[${ts()}]</span><span class="log-tag ${tagMap[type]}">${labelMap[type]}</span><span class="log-msg">${msg}</span>`;
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-ts">${ts()}</span><span class="log-badge ${cls}">${lbl}</span><span class="log-text">${msg}</span>`;
   t.appendChild(div);
   t.scrollTop = t.scrollHeight;
 }
 
-function setStatus(state) {
-  const dot = document.getElementById('statusDot');
-  const txt = document.getElementById('statusText');
-  dot.className = 'status-dot ' + state;
-  const labels = { '': 'OFFLINE', connected: 'CONNECTED', active: 'MINTING' };
-  txt.textContent = labels[state] || state.toUpperCase();
+function clearLog() { document.getElementById('terminal').innerHTML = ''; }
+
+function setNav(state) {
+  const d = document.getElementById('navDot');
+  const s = document.getElementById('navStatus');
+  d.className = 'nav-dot' + (state === 'connected' ? ' on' : state === 'minting' ? ' minting' : '');
+  s.textContent = state === 'connected' ? 'CONNECTED' : state === 'minting' ? 'MINTING' : 'OFFLINE';
 }
 
-function setRpcPreset() {
+function enableActions(on) {
+  ['execBtn','simBtn','checkBtn','detectBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !on;
+  });
+}
+
+function rpcChange() {
   const v = document.getElementById('rpcPreset').value;
-  document.getElementById('customRpcField').style.display = v === 'custom' ? 'block' : 'none';
+  document.getElementById('customRpcWrap').style.display = v === 'custom' ? 'block' : 'none';
+}
+
+function onContractInput() {
+  const v = document.getElementById('contractAddr').value.trim();
+  document.getElementById('detectBtn').disabled = !(v.startsWith('0x') && v.length === 42);
 }
 
 function getRpc() {
   const v = document.getElementById('rpcPreset').value;
-  if (v === 'custom') return document.getElementById('customRpc').value.trim();
-  return v;
+  return v === 'custom' ? document.getElementById('customRpc').value.trim() : v;
 }
 
+// ─── CONNECT ─────────────────────────────────────────────
 async function connect() {
   const pk = document.getElementById('privKey').value.trim();
   const rpc = getRpc();
   if (!pk || !rpc) { log('Private key and RPC required', 'err'); return; }
   try {
-    log(`Connecting to RPC: ${rpc.substring(0,40)}...`, 'info');
+    log(`Connecting → ${rpc.slice(0,50)}...`, 'info');
     provider = new ethers.providers.JsonRpcProvider(rpc);
     wallet = new ethers.Wallet(pk, provider);
-    const net = await provider.getNetwork();
-    const bal = await provider.getBalance(wallet.address);
-    const netInfo = NETWORKS[net.chainId] || { name: `Chain ${net.chainId}`, explorer: `https://etherscan.io/tx/` };
-    networkName = netInfo.name;
-    explorerBase = netInfo.explorer;
-    document.getElementById('statNetwork').textContent = networkName;
-    document.getElementById('statBalance').textContent = parseFloat(ethers.utils.formatEther(bal)).toFixed(4) + ' ETH';
+    const [net, bal] = await Promise.all([provider.getNetwork(), provider.getBalance(wallet.address)]);
+    const info = NETS[net.chainId] || { name:`#${net.chainId}`, explorer:'https://etherscan.io/tx/' };
+    explorerBase = info.explorer;
+    document.getElementById('sNetwork').textContent = info.name;
+    document.getElementById('sBalance').textContent = parseFloat(ethers.utils.formatEther(bal)).toFixed(4);
+    document.getElementById('netLabel').textContent = info.name.toLowerCase();
     log(`Wallet: ${wallet.address}`, 'ok');
-    log(`Network: ${networkName} (chainId: ${net.chainId})`, 'ok');
+    log(`Network: ${info.name} (chainId ${net.chainId})`, 'ok');
     log(`Balance: ${ethers.utils.formatEther(bal)} ETH`, 'ok');
-    setStatus('connected');
-    document.getElementById('mintBtn').disabled = false;
-    document.getElementById('simBtn').disabled = false;
-    document.getElementById('checkBtn').disabled = false;
-    pollGas();
-    startBalancePoller();
-  } catch(e) {
-    log('Connection failed: ' + e.message, 'err');
-  }
+    setNav('connected');
+    enableActions(true);
+    pollGas(); pollBalance();
+  } catch(e) { log('Connect failed: ' + e.message, 'err'); }
 }
 
 function disconnect() {
-  provider = null; wallet = null; contract = null;
-  setStatus('');
-  document.getElementById('statNetwork').textContent = '—';
-  document.getElementById('statBalance').textContent = '—';
-  document.getElementById('statGas').textContent = '—';
-  document.getElementById('mintBtn').disabled = true;
-  document.getElementById('simBtn').disabled = true;
-  document.getElementById('checkBtn').disabled = true;
+  provider = wallet = null;
+  ['sNetwork','sBalance','sGas'].forEach(id => document.getElementById(id).textContent = '—');
+  setNav('');
+  enableActions(false);
   log('Disconnected', 'warn');
-}
-
-function stopBot() {
-  botActive = false;
-  if (schedInterval) { clearInterval(schedInterval); schedInterval = null; }
-  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-  document.getElementById('countdown').textContent = '';
-  setStatus('connected');
-  log('Bot stopped', 'warn');
 }
 
 async function pollGas() {
   if (!provider) return;
   try {
-    const fee = await provider.getFeeData();
-    const gwei = parseFloat(ethers.utils.formatUnits(fee.maxFeePerGas || fee.gasPrice, 'gwei')).toFixed(1);
-    document.getElementById('statGas').textContent = gwei;
+    const f = await provider.getFeeData();
+    const g = parseFloat(ethers.utils.formatUnits(f.maxFeePerGas || f.gasPrice, 'gwei')).toFixed(1);
+    document.getElementById('sGas').textContent = g;
   } catch {}
   setTimeout(pollGas, 15000);
 }
 
-async function startBalancePoller() {
+async function pollBalance() {
   if (!provider || !wallet) return;
   try {
-    const bal = await provider.getBalance(wallet.address);
-    document.getElementById('statBalance').textContent = parseFloat(ethers.utils.formatEther(bal)).toFixed(4) + ' ETH';
+    const b = await provider.getBalance(wallet.address);
+    document.getElementById('sBalance').textContent = parseFloat(ethers.utils.formatEther(b)).toFixed(4);
   } catch {}
-  setTimeout(startBalancePoller, 30000);
+  setTimeout(pollBalance, 30000);
 }
 
+// ─── AUTO ABI DETECTION ──────────────────────────────────
+async function detectABI() {
+  const addr = document.getElementById('contractAddr').value.trim();
+  if (!addr) return;
+  const btn = document.getElementById('detectBtn');
+  const btnTxt = document.getElementById('detectBtnTxt');
+  const result = document.getElementById('abiResult');
+
+  btn.disabled = true;
+  btnTxt.textContent = '⟳ DETECTING...';
+  result.className = 'abi-result';
+  log(`Fetching ABI for ${addr}...`, 'info');
+
+  // Try Etherscan API (no key needed for basic requests)
+  const networks = [
+    { name: 'Ethereum', url: `https://api.etherscan.io/api?module=contract&action=getabi&address=${addr}` },
+    { name: 'Polygon',  url: `https://api.polygonscan.com/api?module=contract&action=getabi&address=${addr}` },
+    { name: 'Base',     url: `https://api.basescan.org/api?module=contract&action=getabi&address=${addr}` },
+    { name: 'Arbitrum', url: `https://api.arbiscan.io/api?module=contract&action=getabi&address=${addr}` },
+  ];
+
+  let found = false;
+  for (const net of networks) {
+    try {
+      const res = await fetch(net.url);
+      const data = await res.json();
+      if (data.status === '1' && data.result && data.result !== 'Contract source code not verified') {
+        const abi = JSON.parse(data.result);
+        // Find mint-related functions
+        const mintFns = abi.filter(x =>
+          x.type === 'function' &&
+          (x.name?.toLowerCase().includes('mint') || x.name?.toLowerCase().includes('claim'))
+        );
+
+        if (mintFns.length > 0) {
+          // Build ABI strings for each mint function
+          const abiStrings = mintFns.map(fn => {
+            const inputs = fn.inputs.map(i => `${i.type} ${i.name}`).join(', ');
+            const payable = fn.stateMutability === 'payable' ? ' payable' : '';
+            return `"function ${fn.name}(${inputs})${payable}"`;
+          });
+
+          const bestFn = mintFns[0];
+          document.getElementById('mintAbi').value = `[${abiStrings.join(',\n')}]`;
+          document.getElementById('mintFn').value = bestFn.name;
+
+          result.className = 'abi-result visible';
+          result.innerHTML = `✓ Found on ${net.name}<br>${mintFns.map(f => `→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`).join('<br>')}`;
+          log(`ABI detected on ${net.name}: ${mintFns.length} mint function(s)`, 'ok');
+          mintFns.forEach(f => log(`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`, 'info'));
+
+          // Auto-suggest args
+          const hasAddress = bestFn.inputs.some(i => i.type === 'address');
+          const hasQty = bestFn.inputs.some(i => i.type.includes('uint'));
+          if (hasAddress && hasQty && wallet) {
+            document.getElementById('mintArgs').value = `${wallet.address}, 1`;
+            log(`Auto-filled args: ${wallet.address}, 1`, 'info');
+          } else if (hasQty && !hasAddress) {
+            document.getElementById('mintArgs').value = '';
+            log('Args: leave blank (qty-only mint)', 'info');
+          }
+          found = true;
+          break;
+        } else {
+          log(`No mint functions on ${net.name}, trying next...`, 'warn');
+        }
+      }
+    } catch(e) { /* try next */ }
+  }
+
+  if (!found) {
+    result.className = 'abi-result visible';
+    result.style.borderColor = 'var(--red)';
+    result.style.background = '#fde8e8';
+    result.innerHTML = '✗ ABI not found or contract not verified.<br>Paste ABI manually from Etherscan → Contract tab.';
+    log('Auto-detect failed. Paste ABI manually from Etherscan.', 'err');
+  }
+
+  btn.disabled = false;
+  btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+}
+
+// ─── CONTRACT UTILS ──────────────────────────────────────
 function getContract() {
   const addr = document.getElementById('contractAddr').value.trim();
-  let abiRaw = document.getElementById('mintAbi').value.trim();
+  let abiRaw = document.getElementById('mintAbi').value.trim() || '["function mint(uint256 qty) payable"]';
   if (!addr) throw new Error('Contract address required');
-  if (!abiRaw) abiRaw = '["function mint(uint256 qty) payable"]';
-  let abi;
-  try { abi = JSON.parse(abiRaw); } catch(e) { throw new Error('Invalid ABI JSON'); }
-  return new ethers.Contract(addr, abi, wallet);
+  return new ethers.Contract(addr, JSON.parse(abiRaw), wallet);
 }
 
 function getMintArgs() {
   const raw = document.getElementById('mintArgs').value.trim();
-  if (!raw) {
-    const qty = parseInt(document.getElementById('mintQty').value) || 1;
-    return [qty];
-  }
+  if (!raw) return [parseInt(document.getElementById('mintQty').value) || 1];
   return raw.split(',').map(a => {
     a = a.trim();
-    if (a.startsWith('0x')) return a;
+    if (a.startsWith('0x') && a.length === 42) return a;
     if (!isNaN(a)) return parseInt(a);
     return a;
   });
 }
 
+// ─── SIMULATE ────────────────────────────────────────────
 async function simulateMint() {
   if (!wallet) { log('Not connected', 'err'); return; }
   try {
@@ -757,195 +865,188 @@ async function simulateMint() {
     const fn = document.getElementById('mintFn').value.trim() || 'mint';
     const args = getMintArgs();
     const price = document.getElementById('mintPrice').value.trim() || '0';
-    const overrides = { value: ethers.utils.parseEther(price) };
-    await c.callStatic[fn](...args, overrides);
-    log('Simulation PASSED — tx would succeed', 'ok');
+    await c.callStatic[fn](...args, { value: ethers.utils.parseEther(price) });
+    log('Simulation PASSED — transaction would succeed ✓', 'ok');
   } catch(e) {
     log('Simulation FAILED: ' + e.message, 'err');
   }
 }
 
+// ─── INSPECT ─────────────────────────────────────────────
 async function checkContract() {
   if (!wallet) { log('Not connected', 'err'); return; }
   const addr = document.getElementById('contractAddr').value.trim();
   if (!addr) { log('Enter contract address first', 'err'); return; }
   try {
-    log(`Checking contract ${addr}...`, 'info');
+    log(`Inspecting ${addr}...`, 'info');
     const code = await provider.getCode(addr);
     if (code === '0x') { log('No contract at this address', 'err'); return; }
-    log(`Contract exists (bytecode: ${code.length} chars)`, 'ok');
-    // try paused()
-    try {
-      const c = new ethers.Contract(addr, ['function paused() view returns (bool)'], provider);
-      const paused = await c.paused();
-      log(`paused() = ${paused}`, paused ? 'warn' : 'ok');
-    } catch { log('paused() not found on contract', 'info'); }
-    // try totalSupply
-    try {
-      const c = new ethers.Contract(addr, ['function totalSupply() view returns (uint256)'], provider);
-      const ts = await c.totalSupply();
-      log(`totalSupply() = ${ts.toString()}`, 'info');
-    } catch {}
-    // try maxSupply
-    try {
-      const c = new ethers.Contract(addr, ['function maxSupply() view returns (uint256)'], provider);
-      const ms = await c.maxSupply();
-      log(`maxSupply() = ${ms.toString()}`, 'info');
-    } catch {}
-  } catch(e) {
-    log('Contract check error: ' + e.message, 'err');
-  }
+    log(`Contract verified (bytecode ${code.length} chars)`, 'ok');
+    const checks = [
+      { abi: ['function paused() view returns (bool)'],   fn: 'paused',      label: 'paused()' },
+      { abi: ['function totalSupply() view returns (uint256)'], fn: 'totalSupply', label: 'totalSupply()' },
+      { abi: ['function maxSupply() view returns (uint256)'],   fn: 'maxSupply',   label: 'maxSupply()' },
+      { abi: ['function mintPrice() view returns (uint256)'],   fn: 'mintPrice',   label: 'mintPrice()' },
+      { abi: ['function cost() view returns (uint256)'],        fn: 'cost',        label: 'cost()' },
+    ];
+    for (const c of checks) {
+      try {
+        const ct = new ethers.Contract(addr, c.abi, provider);
+        const v = await ct[c.fn]();
+        const display = c.fn.includes('price') || c.fn === 'cost'
+          ? ethers.utils.formatEther(v) + ' ETH'
+          : v.toString();
+        log(`${c.label} = ${display}`, c.fn === 'paused' && v ? 'warn' : 'ok');
+      } catch {}
+    }
+  } catch(e) { log('Inspect error: ' + e.message, 'err'); }
 }
 
+// ─── MINT CORE ───────────────────────────────────────────
 async function sendMint(attempt = 1) {
-  const fn = document.getElementById('mintFn').value.trim() || 'mint';
+  const fn   = document.getElementById('mintFn').value.trim() || 'mint';
   const args = getMintArgs();
-  const price = document.getElementById('mintPrice').value.trim() || '0';
-  const maxFee = document.getElementById('maxFee').value;
+  const price       = document.getElementById('mintPrice').value.trim() || '0';
+  const maxFee      = document.getElementById('maxFee').value;
   const priorityFee = document.getElementById('priorityFee').value;
-  const gasLimit = document.getElementById('gasLimit').value;
+  const gasLimit    = document.getElementById('gasLimit').value;
 
-  const overrides = {
+  log(`[${attempt}] ${fn}(${args.join(', ')}) | ${price} ETH | ${maxFee} gwei`, 'info');
+
+  const tx = await getContract()[fn](...args, {
     value: ethers.utils.parseEther(price),
     gasLimit: parseInt(gasLimit),
     maxFeePerGas: ethers.utils.parseUnits(maxFee, 'gwei'),
     maxPriorityFeePerGas: ethers.utils.parseUnits(priorityFee, 'gwei'),
-  };
+  });
 
-  log(`Attempt #${attempt}: calling ${fn}(${args.join(', ')}) | value: ${price} ETH | gas: ${maxFee} gwei`, 'info');
-
-  const c = getContract();
-  const tx = await c[fn](...args, overrides);
-  mintCount++;
-  document.getElementById('statMints').textContent = mintCount;
-  log(`TX Broadcast: <a href="${explorerBase}${tx.hash}" target="_blank">${tx.hash}</a>`, 'tx');
+  txTotal++;
+  document.getElementById('txCount').textContent = txTotal;
+  log(`Broadcast: <a href="${explorerBase}${tx.hash}" target="_blank">${tx.hash.slice(0,20)}...${tx.hash.slice(-8)}</a>`, 'tx');
   addTxRow(tx.hash, 'pending');
 
   const receipt = await tx.wait();
   if (receipt.status === 1) {
-    successCount++;
-    document.getElementById('statSuccess').textContent = successCount;
-    log(`Mint confirmed in block ${receipt.blockNumber} 🎉`, 'ok');
-    updateTxRow(tx.hash, 'success');
+    mintCount++;
+    document.getElementById('sMints').textContent = mintCount;
+    document.getElementById('sMints').classList.add('active');
+    log(`Confirmed in block ${receipt.blockNumber} 🎉`, 'ok');
+    updateTx(tx.hash, 'success');
     return true;
   } else {
-    log('TX reverted on-chain', 'err');
-    updateTxRow(tx.hash, 'failed');
+    log('Transaction reverted on-chain', 'err');
+    updateTx(tx.hash, 'failed');
     return false;
   }
 }
 
+async function runMintLoop() {
+  botActive = true; setNav('minting');
+  const total   = parseInt(document.getElementById('attempts').value) || 1;
+  const doSim   = document.getElementById('optSim').checked;
+  const doRetry = document.getElementById('optRetry').checked;
+  if (doSim) await simulateMint();
+  for (let i = 1; i <= total && botActive; i++) {
+    try {
+      const ok = await sendMint(i);
+      if (ok) break;
+      if (!ok && doRetry && i < total) { log('Retrying in 2s...', 'warn'); await sleep(2000); }
+    } catch(e) {
+      log(`Attempt ${i} error: ${e.message}`, 'err');
+      if (doRetry && i < total) { await sleep(2000); } else break;
+    }
+  }
+  botActive = false; setNav('connected');
+}
+
 async function executeMint() {
   if (!wallet) { log('Not connected', 'err'); return; }
-  if (botActive) { log('Bot already active', 'warn'); return; }
+  if (botActive) { log('Already active', 'warn'); return; }
 
-  const schedEnabled = document.getElementById('optSchedule').checked;
-  if (schedEnabled) {
+  if (document.getElementById('optUnpause').checked) {
+    const addr = document.getElementById('contractAddr').value.trim();
+    log('Watching for unpause...', 'warn');
+    botActive = true; setNav('minting');
+    const c = new ethers.Contract(addr, ['function paused() view returns (bool)'], provider);
+    const poll = setInterval(async () => {
+      if (!botActive) { clearInterval(poll); return; }
+      try {
+        const p = await c.paused();
+        log(`paused() = ${p}`, p ? 'warn' : 'ok');
+        if (!p) { clearInterval(poll); log('Unpaused — firing!', 'warn'); await runMintLoop(); }
+      } catch(e) { log('paused() error: ' + e.message, 'err'); clearInterval(poll); }
+    }, 3000);
+    return;
+  }
+
+  if (document.getElementById('optSched').checked) {
     const t = document.getElementById('schedTime').value;
-    if (!t) { log('Set a target time or disable scheduler', 'err'); return; }
+    if (!t) { log('Set a target time first', 'err'); return; }
     const target = new Date(t).getTime();
-    const now = Date.now();
-    if (target <= now) { log('Scheduled time is in the past', 'err'); return; }
-    log(`Scheduler armed — firing at ${new Date(t).toLocaleString()}`, 'warn');
-    botActive = true;
-    setStatus('active');
+    if (target <= Date.now()) { log('Target time is in the past', 'err'); return; }
+    log(`Scheduler armed → ${new Date(t).toLocaleString()}`, 'warn');
+    botActive = true; setNav('minting');
+    const cd = document.getElementById('schedCountdown');
+    cd.style.display = 'block';
     countdownInterval = setInterval(() => {
       const diff = target - Date.now();
-      if (diff <= 0) {
-        document.getElementById('countdown').textContent = '';
-        clearInterval(countdownInterval);
-        return;
-      }
+      if (diff <= 0) { cd.style.display = 'none'; clearInterval(countdownInterval); return; }
       const s = Math.floor(diff/1000)%60, m = Math.floor(diff/60000)%60, h = Math.floor(diff/3600000);
-      document.getElementById('countdown').textContent = `T-${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      cd.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     }, 500);
     schedInterval = setInterval(async () => {
       if (Date.now() >= target) {
-        clearInterval(schedInterval);
-        clearInterval(countdownInterval);
-        document.getElementById('countdown').textContent = '';
-        log('Target time reached — firing mint!', 'warn');
+        clearInterval(schedInterval); clearInterval(countdownInterval);
+        cd.style.display = 'none';
+        log('Target time reached — firing!', 'warn');
         await runMintLoop();
       }
     }, 250);
     return;
   }
 
-  // check unpause watcher
-  const watchUnpause = document.getElementById('optUnpause').checked;
-  if (watchUnpause) {
-    log('Watching for contract unpause...', 'info');
-    botActive = true;
-    setStatus('active');
-    const addr = document.getElementById('contractAddr').value.trim();
-    const c = new ethers.Contract(addr, ['function paused() view returns (bool)'], provider);
-    const poll = setInterval(async () => {
-      if (!botActive) { clearInterval(poll); return; }
-      try {
-        const paused = await c.paused();
-        log(`paused() = ${paused}`, 'info');
-        if (!paused) {
-          clearInterval(poll);
-          log('Contract unpaused — firing mint!', 'warn');
-          await runMintLoop();
-        }
-      } catch(e) { log('paused() error: ' + e.message, 'err'); clearInterval(poll); }
-    }, 3000);
-    return;
-  }
-
   await runMintLoop();
 }
 
-async function runMintLoop() {
-  botActive = true;
-  setStatus('active');
-  const total = parseInt(document.getElementById('attempts').value) || 1;
-  const simulate = document.getElementById('optSimulate').checked;
-  const retry = document.getElementById('optRetry').checked;
-
-  if (simulate) { await simulateMint(); }
-
-  for (let i = 1; i <= total && botActive; i++) {
-    try {
-      const success = await sendMint(i);
-      if (!success && retry) { log('Retrying...', 'warn'); continue; }
-      if (success) break;
-    } catch(e) {
-      log(`Attempt ${i} error: ${e.message}`, 'err');
-      if (retry && i < total) { log('Retrying in 2s...', 'warn'); await sleep(2000); }
-      else break;
-    }
-  }
+function stopBot() {
   botActive = false;
-  setStatus('connected');
+  [schedInterval, countdownInterval].forEach(t => t && clearInterval(t));
+  schedInterval = countdownInterval = null;
+  document.getElementById('schedCountdown').style.display = 'none';
+  setNav(provider ? 'connected' : '');
+  log('Stopped', 'warn');
+}
+
+// ─── TX TABLE ────────────────────────────────────────────
+let txRows = [];
+function addTxRow(hash, status) {
+  const tbl = document.getElementById('txTable');
+  const empty = tbl.querySelector('.tx-empty');
+  if (empty) empty.remove();
+  txRows.unshift({ hash, status, time: new Date().toTimeString().slice(0,8) });
+  renderTxTable();
+}
+function updateTx(hash, status) {
+  const row = txRows.find(r => r.hash === hash);
+  if (row) { row.status = status; renderTxTable(); }
+}
+function renderTxTable() {
+  const tbl = document.getElementById('txTable');
+  tbl.innerHTML = txRows.map((r, i) => `
+    <div class="tx-row">
+      <span class="tx-idx">${String(txRows.length - i).padStart(2,'0')}</span>
+      <span class="tx-hash-cell"><a href="${explorerBase}${r.hash}" target="_blank">${r.hash.slice(0,22)}...${r.hash.slice(-8)}</a></span>
+      <span class="tx-time">${r.time}</span>
+      <span class="tx-badge ${r.status}">${r.status.toUpperCase()}</span>
+    </div>`).join('');
 }
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-function addTxRow(hash, status) {
-  const list = document.getElementById('txList');
-  const empty = list.querySelector('.empty-state');
-  if (empty) empty.remove();
-  const div = document.createElement('div');
-  div.className = 'tx-item';
-  div.id = 'tx-' + hash.slice(2,10);
-  div.innerHTML = `
-    <span class="tx-hash"><a href="${explorerBase}${hash}" target="_blank">${hash.slice(0,20)}...${hash.slice(-8)}</a></span>
-    <span class="tx-status ${status}" id="txs-${hash.slice(2,10)}">${status.toUpperCase()}</span>
-  `;
-  list.insertBefore(div, list.firstChild);
-}
-
-function updateTxRow(hash, status) {
-  const el = document.getElementById('txs-' + hash.slice(2,10));
-  if (el) { el.className = 'tx-status ' + status; el.textContent = status.toUpperCase(); }
-}
-
-// Boot message
+// ─── BOOT ────────────────────────────────────────────────
 window.onload = () => {
-  log('MintBot EVM initialized', 'info');
-  log('Connect wallet to begin', 'info');
+  log('Minter initialized — connect wallet to begin', 'info');
+  log('Auto ABI detection available after entering contract address', 'info');
 };
 </script>
 </body>
