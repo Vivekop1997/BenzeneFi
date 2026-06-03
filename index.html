@@ -755,86 +755,228 @@ async function pollBalance() {
   setTimeout(pollBalance, 30000);
 }
 
+// ─── KNOWN CONTRACT STANDARDS ────────────────────────────
+const KNOWN_STANDARDS = [
+  {
+    name: 'SeaDrop (OpenSea ERC721)',
+    // selector for mintSeaDrop(address,uint256) = 0x64869dad
+    sig: '64869dad',
+    abi: '["function mintSeaDrop(address minter, uint256 quantity) payable"]',
+    fn: 'mintSeaDrop',
+    args: (addr) => `${addr}, 1`,
+    note: 'OpenSea SeaDrop standard — pass your wallet address + quantity'
+  },
+  {
+    name: 'ERC721A Standard',
+    // mint(uint256) = 0xa0712d68
+    sig: 'a0712d68',
+    abi: '["function mint(uint256 quantity) payable"]',
+    fn: 'mint',
+    args: () => '',
+    note: 'ERC721A — qty-only mint, leave args blank'
+  },
+  {
+    name: 'Manifold (claim)',
+    // claim(uint32,uint32,uint32,address,bytes32[]) — common Manifold sig
+    sig: 'aad3ec96',
+    abi: '["function claim(uint32 creatorContractVersion, uint256 claimIndex, uint32 mintIndex, address mintFor, bytes32[] merkleProof) payable"]',
+    fn: 'claim',
+    args: (addr) => `1, 0, 0, ${addr}, []`,
+    note: 'Manifold claim — adjust claimIndex if needed'
+  },
+  {
+    name: 'publicMint(uint256)',
+    sig: 'e8a3d485', // publicMint(uint256)
+    abi: '["function publicMint(uint256 quantity) payable"]',
+    fn: 'publicMint',
+    args: () => '',
+    note: 'Public mint with quantity'
+  },
+  {
+    name: 'safeMint(address,uint256)',
+    sig: 'd204c45e',
+    abi: '["function safeMint(address to, uint256 quantity) payable"]',
+    fn: 'safeMint',
+    args: (addr) => `${addr}, 1`,
+    note: 'safeMint with address + quantity'
+  },
+  {
+    name: 'presaleMint(uint256)',
+    sig: '274601d6',
+    abi: '["function presaleMint(uint256 quantity) payable"]',
+    fn: 'presaleMint',
+    args: () => '',
+    note: 'Presale/whitelist mint'
+  },
+  {
+    name: 'whitelistMint(uint256,bytes32[])',
+    sig: 'e8a3d487',
+    abi: '["function whitelistMint(uint256 quantity, bytes32[] proof) payable"]',
+    fn: 'whitelistMint',
+    args: () => '1, []',
+    note: 'WL mint with merkle proof — replace [] with your proof array'
+  },
+  {
+    name: 'mintTo(address)',
+    sig: '449a52f8',
+    abi: '["function mintTo(address to) payable"]',
+    fn: 'mintTo',
+    args: (addr) => addr,
+    note: 'Simple mintTo with wallet address'
+  },
+];
+
 // ─── AUTO ABI DETECTION ──────────────────────────────────
 async function detectABI() {
   const addr = document.getElementById('contractAddr').value.trim();
   if (!addr) return;
-  const btn = document.getElementById('detectBtn');
+  if (!provider) { log('Connect wallet first so we can read the contract bytecode', 'err'); return; }
+
+  const btn    = document.getElementById('detectBtn');
   const btnTxt = document.getElementById('detectBtnTxt');
   const result = document.getElementById('abiResult');
 
   btn.disabled = true;
   btnTxt.textContent = '⟳ DETECTING...';
   result.className = 'abi-result';
-  log(`Fetching ABI for ${addr}...`, 'info');
+  result.style.borderColor = '';
+  result.style.background = '';
+  log(`Detecting contract type for ${addr}...`, 'info');
 
-  // Try Etherscan API (no key needed for basic requests)
-  const networks = [
+  // STEP 1: Try verified ABI from block explorers
+  const explorerAPIs = [
     { name: 'Ethereum', url: `https://api.etherscan.io/api?module=contract&action=getabi&address=${addr}` },
     { name: 'Polygon',  url: `https://api.polygonscan.com/api?module=contract&action=getabi&address=${addr}` },
     { name: 'Base',     url: `https://api.basescan.org/api?module=contract&action=getabi&address=${addr}` },
     { name: 'Arbitrum', url: `https://api.arbiscan.io/api?module=contract&action=getabi&address=${addr}` },
+    { name: 'Optimism', url: `https://api-optimistic.etherscan.io/api?module=contract&action=getabi&address=${addr}` },
   ];
 
-  let found = false;
-  for (const net of networks) {
+  for (const api of explorerAPIs) {
     try {
-      const res = await fetch(net.url);
+      const res  = await fetch(api.url);
       const data = await res.json();
-      if (data.status === '1' && data.result && data.result !== 'Contract source code not verified') {
-        const abi = JSON.parse(data.result);
-        // Find mint-related functions
+      if (data.status === '1' && data.result && !data.result.includes('not verified')) {
+        const abi     = JSON.parse(data.result);
         const mintFns = abi.filter(x =>
           x.type === 'function' &&
           (x.name?.toLowerCase().includes('mint') || x.name?.toLowerCase().includes('claim'))
         );
-
         if (mintFns.length > 0) {
-          // Build ABI strings for each mint function
           const abiStrings = mintFns.map(fn => {
-            const inputs = fn.inputs.map(i => `${i.type} ${i.name}`).join(', ');
+            const inputs  = fn.inputs.map(i => `${i.type} ${i.name}`).join(', ');
             const payable = fn.stateMutability === 'payable' ? ' payable' : '';
             return `"function ${fn.name}(${inputs})${payable}"`;
           });
-
           const bestFn = mintFns[0];
           document.getElementById('mintAbi').value = `[${abiStrings.join(',\n')}]`;
-          document.getElementById('mintFn').value = bestFn.name;
-
+          document.getElementById('mintFn').value  = bestFn.name;
+          autoFillArgs(bestFn);
           result.className = 'abi-result visible';
-          result.innerHTML = `✓ Found on ${net.name}<br>${mintFns.map(f => `→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`).join('<br>')}`;
-          log(`ABI detected on ${net.name}: ${mintFns.length} mint function(s)`, 'ok');
+          result.innerHTML = `✓ Verified ABI on ${api.name}<br>${mintFns.map(f=>`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`).join('<br>')}`;
+          log(`Verified ABI from ${api.name}: ${mintFns.length} mint function(s)`, 'ok');
           mintFns.forEach(f => log(`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`, 'info'));
-
-          // Auto-suggest args
-          const hasAddress = bestFn.inputs.some(i => i.type === 'address');
-          const hasQty = bestFn.inputs.some(i => i.type.includes('uint'));
-          if (hasAddress && hasQty && wallet) {
-            document.getElementById('mintArgs').value = `${wallet.address}, 1`;
-            log(`Auto-filled args: ${wallet.address}, 1`, 'info');
-          } else if (hasQty && !hasAddress) {
-            document.getElementById('mintArgs').value = '';
-            log('Args: leave blank (qty-only mint)', 'info');
-          }
-          found = true;
-          break;
-        } else {
-          log(`No mint functions on ${net.name}, trying next...`, 'warn');
+          btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+          return;
         }
       }
     } catch(e) { /* try next */ }
   }
 
-  if (!found) {
-    result.className = 'abi-result visible';
-    result.style.borderColor = 'var(--red)';
-    result.style.background = '#fde8e8';
-    result.innerHTML = '✗ ABI not found or contract not verified.<br>Paste ABI manually from Etherscan → Contract tab.';
-    log('Auto-detect failed. Paste ABI manually from Etherscan.', 'err');
+  // STEP 2: Bytecode fingerprinting — read raw bytecode and check for known function selectors
+  log('Not verified on explorers — scanning bytecode selectors...', 'warn');
+  try {
+    const bytecode = await provider.getCode(addr);
+    if (!bytecode || bytecode === '0x') {
+      log('No contract deployed at this address', 'err');
+      btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+      return;
+    }
+
+    log(`Bytecode retrieved (${bytecode.length} chars) — fingerprinting...`, 'info');
+
+    // Check each known standard's 4-byte selector in the bytecode
+    let matched = null;
+    for (const std of KNOWN_STANDARDS) {
+      if (bytecode.toLowerCase().includes(std.sig.toLowerCase())) {
+        matched = std;
+        log(`Selector 0x${std.sig} found → ${std.name}`, 'ok');
+        break;
+      }
+    }
+
+    if (matched) {
+      document.getElementById('mintAbi').value = matched.abi;
+      document.getElementById('mintFn').value  = matched.fn;
+      const walletAddr = wallet ? wallet.address : '0xYourAddress';
+      const argsVal    = matched.args(walletAddr);
+      document.getElementById('mintArgs').value = argsVal;
+      result.className = 'abi-result visible';
+      result.innerHTML = `✓ Detected: <strong>${matched.name}</strong><br>→ ${matched.fn}(...)<br><small>${matched.note}</small>`;
+      log(`Contract type: ${matched.name}`, 'ok');
+      log(`Auto-filled ABI: ${matched.fn}`, 'ok');
+      if (argsVal) log(`Auto-filled args: ${argsVal}`, 'ok');
+      else log('Args: leave blank (qty-only)', 'info');
+    } else {
+      // STEP 3: Probe common function selectors live via eth_call
+      log('No known selector matched — probing live function calls...', 'warn');
+      const probes = [
+        { selector:'0xa0712d68', name:'mint(uint256)',              abi:'["function mint(uint256 quantity) payable"]',                          fn:'mint',          args:()=>'' },
+        { selector:'0x64869dad', name:'mintSeaDrop(address,uint256)',abi:'["function mintSeaDrop(address minter, uint256 quantity) payable"]',  fn:'mintSeaDrop',   args:(a)=>`${a}, 1` },
+        { selector:'0x1249c58b', name:'mint()',                     abi:'["function mint() payable"]',                                         fn:'mint',          args:()=>'' },
+        { selector:'0x40d097c3', name:'safeMint(address)',          abi:'["function safeMint(address to) payable"]',                           fn:'safeMint',      args:(a)=>a },
+        { selector:'0x449a52f8', name:'mintTo(address)',            abi:'["function mintTo(address to) payable"]',                             fn:'mintTo',        args:(a)=>a },
+        { selector:'0x274601d6', name:'presaleMint(uint256)',       abi:'["function presaleMint(uint256 quantity) payable"]',                  fn:'presaleMint',   args:()=>'' },
+      ];
+
+      let probeMatch = null;
+      for (const p of probes) {
+        if (bytecode.toLowerCase().includes(p.selector.slice(2).toLowerCase())) {
+          probeMatch = p;
+          break;
+        }
+      }
+
+      if (probeMatch) {
+        const walletAddr = wallet ? wallet.address : '0xYourAddress';
+        document.getElementById('mintAbi').value  = probeMatch.abi;
+        document.getElementById('mintFn').value   = probeMatch.fn;
+        document.getElementById('mintArgs').value = probeMatch.args(walletAddr);
+        result.className = 'abi-result visible';
+        result.innerHTML = `✓ Probe match: <strong>${probeMatch.name}</strong>`;
+        log(`Probe matched: ${probeMatch.name}`, 'ok');
+      } else {
+        result.className = 'abi-result visible';
+        result.style.borderColor = 'var(--red)';
+        result.style.background  = '#fde8e8';
+        result.innerHTML = `✗ Could not auto-detect.<br>Go to Etherscan → contract address → Contract tab → Copy ABI and paste it manually.`;
+        log('Auto-detect exhausted all methods. Paste ABI manually from Etherscan.', 'err');
+      }
+    }
+  } catch(e) {
+    log('Bytecode scan error: ' + e.message, 'err');
   }
 
   btn.disabled = false;
   btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+}
+
+// Auto-fill args from a parsed ABI function object
+function autoFillArgs(fn) {
+  if (!fn || !fn.inputs) return;
+  const walletAddr = wallet ? wallet.address : '0xYourAddress';
+  const hasAddr = fn.inputs.some(i => i.type === 'address');
+  const hasQty  = fn.inputs.some(i => i.type.includes('uint'));
+  const hasProof= fn.inputs.some(i => i.type.includes('bytes32'));
+  let args = '';
+  if (hasAddr && hasQty && hasProof) args = `${walletAddr}, 1, []`;
+  else if (hasAddr && hasQty)         args = `${walletAddr}, 1`;
+  else if (hasAddr && !hasQty)        args = walletAddr;
+  else if (hasQty && hasProof)        args = `1, []`;
+  else if (hasQty)                    args = '';
+  document.getElementById('mintArgs').value = args;
+  if (args) log(`Auto-filled args: ${args}`, 'ok');
+  else log('Args: leave blank (qty only)', 'info');
 }
 
 // ─── CONTRACT UTILS ──────────────────────────────────────
