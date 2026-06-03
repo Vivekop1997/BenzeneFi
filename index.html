@@ -515,9 +515,32 @@ textarea { resize: vertical; min-height: 72px; }
           <input type="number" id="mintQty" value="1" min="1">
         </div>
         <div class="field">
-          <label>Price (ETH)</label>
+          <label>Price (ETH) <span id="priceAutoTag" style="display:none;font-size:8px;letter-spacing:1px;color:var(--green);font-family:var(--mono);background:#e6f4ec;padding:1px 5px;border:1px solid var(--green)">AUTO</span></label>
           <input type="text" id="mintPrice" value="0" placeholder="0.08">
         </div>
+      </div>
+      <!-- Auto-detected price row -->
+      <div id="priceDetectRow" style="display:none;margin-bottom:12px">
+        <div style="background:var(--gray);border:1.5px solid var(--border);padding:10px 12px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--gray4);margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Detected Prices</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--black);flex:1">Public</span>
+              <span id="detectedPublicPrice" style="font-family:var(--mono);font-size:11px;color:var(--black);font-weight:500">—</span>
+              <button onclick="applyPrice('public')" id="applyPublicBtn" disabled style="padding:3px 10px;background:var(--black);color:var(--white);border:none;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--orange)'" onmouseout="this.style.background='var(--black)'">USE</button>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span style="font-family:var(--mono);font-size:10px;color:var(--black);flex:1">WL / Presale</span>
+              <span id="detectedWLPrice" style="font-family:var(--mono);font-size:11px;color:var(--green);font-weight:500">—</span>
+              <button onclick="applyPrice('wl')" id="applyWLBtn" disabled style="padding:3px 10px;background:var(--green);color:var(--white);border:none;font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background='var(--black)'" onmouseout="this.style.background='var(--green)'">USE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <button id="fetchPriceBtn" onclick="fetchMintPrice()" disabled style="width:100%;padding:8px;background:var(--gray);color:var(--black);border:1.5px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px" onmouseover="if(!this.disabled)this.style.background='var(--black)',this.style.color='var(--white)'" onmouseout="if(!this.disabled)this.style.background='var(--gray)',this.style.color='var(--black)'">
+          <span id="fetchPriceTxt">⬡ FETCH MINT PRICE</span>
+        </button>
       </div>
       <div class="field">
         <label>Function Arguments (comma separated)</label>
@@ -527,7 +550,12 @@ textarea { resize: vertical; min-height: 72px; }
 
     <!-- GAS -->
     <div class="section">
-      <div class="section-label">04 — Gas</div>
+      <div class="section-label" style="display:flex;align-items:center;gap:8px">
+        04 — Gas
+        <span id="gasLiveTag" style="display:none;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);font-family:var(--mono);background:#e6f4ec;padding:2px 7px;border:1px solid var(--green)">● LIVE</span>
+        <span id="gasUpdatedAt" style="font-size:9px;color:var(--gray3);font-family:var(--mono);margin-left:auto;display:none"></span>
+        <div style="flex:1;height:1px;background:var(--border);margin-left:4px"></div>
+      </div>
       <div class="row2">
         <div class="field">
           <label>Max Fee (Gwei)</label>
@@ -536,6 +564,16 @@ textarea { resize: vertical; min-height: 72px; }
         <div class="field">
           <label>Priority (Gwei)</label>
           <input type="number" id="priorityFee" value="2">
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <button id="refreshGasBtn" onclick="refreshGasNow()" disabled style="width:100%;padding:8px;background:var(--gray);color:var(--black);border:1.5px solid var(--border);font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px" onmouseover="if(!this.disabled)this.style.background='var(--black)',this.style.color='var(--white)'" onmouseout="if(!this.disabled)this.style.background='var(--gray)',this.style.color='var(--black)'">
+          <span id="refreshGasTxt">⟳ REFRESH GAS NOW</span>
+        </button>
+        <div style="margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--gray3);display:flex;justify-content:space-between">
+          <span>Base: <span id="gasBase" style="color:var(--black)">—</span> gwei</span>
+          <span>Priority: <span id="gasPriority" style="color:var(--black)">—</span> gwei</span>
+          <span>Max: <span id="gasMax" style="color:var(--orange)">—</span> gwei</span>
         </div>
       </div>
       <div class="row2">
@@ -683,7 +721,7 @@ function setNav(state) {
 }
 
 function enableActions(on) {
-  ['execBtn','simBtn','checkBtn','detectBtn'].forEach(id => {
+  ['execBtn','simBtn','checkBtn','detectBtn','fetchPriceBtn','refreshGasBtn'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.disabled = !on;
   });
@@ -696,7 +734,18 @@ function rpcChange() {
 
 function onContractInput() {
   const v = document.getElementById('contractAddr').value.trim();
-  document.getElementById('detectBtn').disabled = !(v.startsWith('0x') && v.length === 42);
+  const valid = v.startsWith('0x') && v.length === 42;
+  document.getElementById('detectBtn').disabled = !valid;
+  document.getElementById('fetchPriceBtn').disabled = !valid;
+  if (!valid) {
+    document.getElementById('priceDetectRow').style.display = 'none';
+    document.getElementById('priceAutoTag').style.display = 'none';
+    _publicMintPrice = null; _wlMintPrice = null;
+    document.getElementById('detectedPublicPrice').textContent = '—';
+    document.getElementById('detectedWLPrice').textContent = '—';
+    document.getElementById('applyPublicBtn').disabled = true;
+    document.getElementById('applyWLBtn').disabled = true;
+  }
 }
 
 function getRpc() {
@@ -736,14 +785,147 @@ function disconnect() {
   log('Disconnected', 'warn');
 }
 
+let _publicMintPrice = null;
+let _wlMintPrice = null;
+
 async function pollGas() {
   if (!provider) return;
   try {
     const f = await provider.getFeeData();
-    const g = parseFloat(ethers.utils.formatUnits(f.maxFeePerGas || f.gasPrice, 'gwei')).toFixed(1);
-    document.getElementById('sGas').textContent = g;
+    const baseFee  = f.lastBaseFeePerGas || f.gasPrice;
+    const maxFeePerGas = f.maxFeePerGas || f.gasPrice;
+    const priorityFee  = f.maxPriorityFeePerGas;
+
+    const baseFeeGwei  = parseFloat(ethers.utils.formatUnits(baseFee, 'gwei')).toFixed(2);
+    const maxGwei      = parseFloat(ethers.utils.formatUnits(maxFeePerGas, 'gwei')).toFixed(2);
+    const priorityGwei = priorityFee ? parseFloat(ethers.utils.formatUnits(priorityFee, 'gwei')).toFixed(2) : '2.00';
+
+    // Hero gas stat
+    document.getElementById('sGas').textContent = maxGwei;
+
+    // Gas section detail bar
+    document.getElementById('gasBase').textContent     = baseFeeGwei;
+    document.getElementById('gasMax').textContent      = maxGwei;
+    document.getElementById('gasPriority').textContent = priorityGwei;
+
+    // Auto-fill the gas inputs (non-destructively — only if user hasnt manually edited)
+    const maxFeeEl = document.getElementById('maxFee');
+    const prioEl   = document.getElementById('priorityFee');
+    if (!maxFeeEl.dataset.userEdited) maxFeeEl.value = Math.ceil(parseFloat(maxGwei));
+    if (!prioEl.dataset.userEdited)   prioEl.value   = Math.max(2, Math.ceil(parseFloat(priorityGwei)));
+
+    // Show live tag + timestamp
+    const liveTag = document.getElementById('gasLiveTag');
+    const updAt   = document.getElementById('gasUpdatedAt');
+    if (liveTag) { liveTag.style.display = 'inline'; }
+    if (updAt)   { updAt.style.display = 'inline'; updAt.textContent = 'updated ' + new Date().toTimeString().slice(0,8); }
   } catch {}
-  setTimeout(pollGas, 15000);
+  setTimeout(pollGas, 12000);
+}
+
+async function refreshGasNow() {
+  const btn = document.getElementById('refreshGasBtn');
+  const txt = document.getElementById('refreshGasTxt');
+  btn.disabled = true;
+  txt.textContent = '⟳ FETCHING...';
+  await pollGas();
+  txt.textContent = '⟳ REFRESH GAS NOW';
+  btn.disabled = false;
+  log('Gas prices refreshed manually', 'ok');
+}
+
+// Track user manual edits to gas inputs so auto-fill doesnt overwrite
+['maxFee', 'priorityFee'].forEach(id => {
+  document.addEventListener('DOMContentLoaded', () => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { el.dataset.userEdited = '1'; });
+  });
+});
+
+// ─── MINT PRICE FETCHER ──────────────────────────────────────────────────────
+const PRICE_PROBES = [
+  { fn: 'mintPrice',       abi: 'function mintPrice() view returns (uint256)' },
+  { fn: 'cost',            abi: 'function cost() view returns (uint256)' },
+  { fn: 'price',           abi: 'function price() view returns (uint256)' },
+  { fn: 'getPrice',        abi: 'function getPrice() view returns (uint256)' },
+  { fn: 'publicMintPrice', abi: 'function publicMintPrice() view returns (uint256)' },
+  { fn: 'MINT_PRICE',      abi: 'function MINT_PRICE() view returns (uint256)' },
+  { fn: 'salePrice',       abi: 'function salePrice() view returns (uint256)' },
+];
+
+const WL_PRICE_PROBES = [
+  { fn: 'whitelistPrice',   abi: 'function whitelistPrice() view returns (uint256)' },
+  { fn: 'presalePrice',     abi: 'function presalePrice() view returns (uint256)' },
+  { fn: 'allowlistPrice',   abi: 'function allowlistPrice() view returns (uint256)' },
+  { fn: 'wlPrice',          abi: 'function wlPrice() view returns (uint256)' },
+  { fn: 'WL_MINT_PRICE',    abi: 'function WL_MINT_PRICE() view returns (uint256)' },
+  { fn: 'preSalePrice',     abi: 'function preSalePrice() view returns (uint256)' },
+  { fn: 'privateMintPrice', abi: 'function privateMintPrice() view returns (uint256)' },
+];
+
+async function fetchMintPrice() {
+  const addr = document.getElementById('contractAddr').value.trim();
+  if (!addr || !provider) { log('Connect wallet and enter contract address first', 'err'); return; }
+
+  const btn = document.getElementById('fetchPriceBtn');
+  const txt = document.getElementById('fetchPriceTxt');
+  btn.disabled = true;
+  txt.textContent = '⟳ FETCHING PRICE...';
+  _publicMintPrice = null;
+  _wlMintPrice = null;
+
+  log('Probing contract for mint price functions...', 'info');
+
+  // Probe public price
+  for (const probe of PRICE_PROBES) {
+    try {
+      const ct = new ethers.Contract(addr, [`${probe.abi}`], provider);
+      const v  = await ct[probe.fn]();
+      _publicMintPrice = ethers.utils.formatEther(v);
+      document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH';
+      document.getElementById('applyPublicBtn').disabled = false;
+      log(`Public price via ${probe.fn}(): ${_publicMintPrice} ETH`, 'ok');
+      break;
+    } catch {}
+  }
+
+  // Probe WL price
+  for (const probe of WL_PRICE_PROBES) {
+    try {
+      const ct = new ethers.Contract(addr, [`${probe.abi}`], provider);
+      const v  = await ct[probe.fn]();
+      _wlMintPrice = ethers.utils.formatEther(v);
+      document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH';
+      document.getElementById('applyWLBtn').disabled = false;
+      log(`WL/Presale price via ${probe.fn}(): ${_wlMintPrice} ETH`, 'ok');
+      break;
+    } catch {}
+  }
+
+  // Show the price row
+  const row = document.getElementById('priceDetectRow');
+  if (_publicMintPrice || _wlMintPrice) {
+    row.style.display = 'block';
+    if (!_publicMintPrice) document.getElementById('detectedPublicPrice').textContent = 'not found';
+    if (!_wlMintPrice)    { document.getElementById('detectedWLPrice').textContent = 'not found'; document.getElementById('applyWLBtn').disabled = true; }
+    log('Price fetch complete — click USE to apply', 'ok');
+  } else {
+    log('Could not detect price automatically — enter manually', 'warn');
+    row.style.display = 'block';
+    document.getElementById('detectedPublicPrice').textContent = 'not found';
+    document.getElementById('detectedWLPrice').textContent     = 'not found';
+  }
+
+  txt.textContent = '⬡ FETCH MINT PRICE';
+  btn.disabled = false;
+}
+
+function applyPrice(type) {
+  const p = type === 'wl' ? _wlMintPrice : _publicMintPrice;
+  if (!p) return;
+  document.getElementById('mintPrice').value = p;
+  document.getElementById('priceAutoTag').style.display = 'inline';
+  log(`Applied ${type === 'wl' ? 'WL' : 'public'} price: ${p} ETH`, 'ok');
 }
 
 async function pollBalance() {
@@ -877,6 +1059,7 @@ async function detectABI() {
           log(`Verified ABI from ${api.name}: ${mintFns.length} mint function(s)`, 'ok');
           mintFns.forEach(f => log(`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`, 'info'));
           btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+          fetchMintPrice();
           return;
         }
       }
