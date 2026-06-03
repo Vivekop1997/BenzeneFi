@@ -502,7 +502,7 @@ textarea { resize: vertical; min-height: 72px; }
       </div>
       <div class="field">
         <label>Mint Function Name</label>
-        <input type="text" id="mintFn" value="mint" placeholder="mint / mintSeaDrop / presaleMint">
+        <input type="text" id="mintFn" value="mint" placeholder="mint / mintSeaDrop / presaleMint" oninput="onMintFnChange()">
       </div>
     </div>
 
@@ -893,7 +893,7 @@ const SEADROP_ADDRS = [
   '0x0000a26b00c1F0DF003000390027140000fAa719',
 ];
 
-async function fetchMintPrice() {
+async function fetchMintPrice(autoApply = false) {
   const addr = document.getElementById('contractAddr').value.trim();
   if (!addr || !provider) { log('Connect wallet and enter contract address first', 'err'); return; }
 
@@ -997,6 +997,12 @@ async function fetchMintPrice() {
 
   if (_publicMintPrice || _wlMintPrice) {
     log('Price fetch complete — click USE to apply', 'ok');
+    if (autoApply) {
+      const p = _publicMintPrice || _wlMintPrice;
+      document.getElementById('mintPrice').value = p;
+      document.getElementById('priceAutoTag').style.display = 'inline';
+      log('Auto-applied ' + (_publicMintPrice ? 'public' : 'WL') + ' price: ' + p + ' ETH', 'ok');
+    }
   } else {
     log('No price detected — may be free mint or price in mapping (check Etherscan)', 'warn');
   }
@@ -1253,7 +1259,7 @@ async function detectABI() {
           allFns.forEach(f => log('→ ' + f.name + '(' + f.inputs.map(i => i.type).join(', ') + ')', 'info'));
           log('Best fn selected: ' + bestFn.name, 'ok');
           btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
-          fetchMintPrice();
+          fetchMintPrice(true);
           return;
         }
       }
@@ -1305,7 +1311,7 @@ async function detectABI() {
       result.innerHTML = '✓ Bytecode matched ' + allMatched.length + ' standard(s)<br>' + allMatched.map(s => '→ ' + s.fn + '() — ' + s.name).join('<br>');
       log('Best fn: ' + best.fn + ' | ' + allMatched.length + ' total match(es)', 'ok');
       btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
-      fetchMintPrice();
+      fetchMintPrice(true);
       return;
     }
 
@@ -1355,7 +1361,7 @@ async function detectABI() {
       result.className = 'abi-result visible';
       result.innerHTML = '✓ eth_call probe: <strong>' + probeMatch.name + '</strong><br><small>' + probeMatch.note + '</small>';
       log('Probe matched: ' + probeMatch.name, 'ok');
-      fetchMintPrice();
+      fetchMintPrice(true);
     } else {
       result.className = 'abi-result visible';
       result.style.borderColor = 'var(--red)';
@@ -1371,6 +1377,47 @@ async function detectABI() {
   btnTxt.textContent = '⬡ AUTO-DETECT ABI';
 }
 
+
+// Called when user edits the Mint Function Name field — re-derives args from current ABI
+function onMintFnChange() {
+  const fnName = document.getElementById('mintFn').value.trim();
+  if (!fnName) return;
+  // First try to find it in the current ABI textarea
+  try {
+    const abiRaw = document.getElementById('mintAbi').value.trim();
+    if (abiRaw) {
+      const abi = JSON.parse(abiRaw);
+      const match = abi.find(x => {
+        if (typeof x === 'string') {
+          return x.includes('function ' + fnName + '(');
+        }
+        return x.type === 'function' && x.name === fnName;
+      });
+      if (match) {
+        // Parse into a simple inputs structure
+        let inputs = [];
+        if (typeof match === 'string') {
+          const m = match.match(/\(([^)]*)\)/);
+          if (m && m[1].trim()) {
+            inputs = m[1].split(',').map(p => {
+              const parts = p.trim().split(/\s+/);
+              return { type: parts[0], name: parts[1] || '' };
+            });
+          }
+        } else {
+          inputs = match.inputs || [];
+        }
+        autoFillArgs({ inputs });
+        return;
+      }
+    }
+  } catch {}
+  // Fallback: check KNOWN_STANDARDS
+  const std = KNOWN_STANDARDS.find(s => s.fn === fnName);
+  if (std) {
+    document.getElementById('mintArgs').value = std.args(wallet ? wallet.address : '0xYourAddress');
+  }
+}
 
 // Auto-fill args from a parsed ABI function object
 function autoFillArgs(fn) {
