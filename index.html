@@ -921,12 +921,38 @@ const WL_ADDR_PRICE_PROBES = [
   { fn:'priceOf',               abi:'function priceOf(address wallet) view returns (uint256)' },
 ];
 
-// SeaDrop ABI for getPublicDrop
-const SEADROP_PUBLIC_DROP_ABI = 'function getPublicDrop() view returns (tuple(uint80 mintPrice,uint48 startTime,uint48 endTime,uint16 maxTotalMintableByWallet,uint16 feeBps,bool restrictFeeRecipients))';
-const SEADROP_PUBLIC_DROP_ABI2 = 'function getPublicDrop(address seaDrop) view returns (tuple(uint80 mintPrice,uint48 startTime,uint48 endTime,uint16 maxTotalMintableByWallet,uint16 feeBps,bool restrictFeeRecipients))';
-const SEADROP_ADDRS = [
-  '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5',
-  '0x0000a26b00c1F0DF003000390027140000fAa719',
+// SeaDrop discovery — asks the NFT contract which SeaDrop contract it uses
+const GET_ALLOWED_SEADROP_ABI = [
+  "function getAllowedSeaDrop() view returns(address[])"
+];
+
+async function getSeaDropAddress(nftAddress) {
+  try {
+    const nft = new ethers.Contract(nftAddress, GET_ALLOWED_SEADROP_ABI, provider);
+    const seaDrops = await nft.getAllowedSeaDrop();
+    if (seaDrops && seaDrops.length > 0) {
+      return seaDrops[0];
+    }
+  } catch (e) {
+    console.log("SeaDrop discovery failed", e);
+  }
+  return null;
+}
+
+// SeaDrop read ABI — called on the SeaDrop contract, passing the NFT address
+const SEADROP_READ_ABI = [
+  `function getPublicDrop(address nft)
+    view
+    returns (
+      tuple(
+        uint80 mintPrice,
+        uint48 startTime,
+        uint48 endTime,
+        uint16 maxTotalMintableByWallet,
+        uint16 feeBps,
+        bool restrictFeeRecipients
+      )
+    )`
 ];
 
 async function fetchMintPrice(autoApply = false) {
@@ -948,43 +974,36 @@ async function fetchMintPrice(autoApply = false) {
     try {
       const ct = new ethers.Contract(addr, [probe.abi], provider);
       const v  = await ct[probe.fn]();
-      if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+      if (ethers.BigNumber.isBigNumber(v)) {
         _publicMintPrice = ethers.utils.formatEther(v);
         document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH';
         document.getElementById('applyPublicBtn').disabled = false;
         log('Public price via ' + probe.fn + '(): ' + _publicMintPrice + ' ETH', 'ok');
         break;
       }
-    } catch {}
+    } catch(e) { console.log(e); }
   }
 
-  // ── 2. SeaDrop getPublicDrop (for mintSeaDrop contracts) ──────────────────
+  // ── 2. SeaDrop — discover SeaDrop contract then query it with NFT address ────
   if (!_publicMintPrice) {
     try {
-      const ct = new ethers.Contract(addr, [SEADROP_PUBLIC_DROP_ABI], provider);
-      const drop = await ct.getPublicDrop();
-      if (drop && drop.mintPrice && !ethers.BigNumber.from(drop.mintPrice).isZero()) {
-        _publicMintPrice = ethers.utils.formatEther(drop.mintPrice);
-        document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH (SeaDrop)';
-        document.getElementById('applyPublicBtn').disabled = false;
-        log('SeaDrop getPublicDrop mintPrice: ' + _publicMintPrice + ' ETH', 'ok');
+      const seaDropAddr = await getSeaDropAddress(addr);
+
+      if (seaDropAddr) {
+        log("SeaDrop detected: " + seaDropAddr, "info");
+
+        const seaDrop = new ethers.Contract(seaDropAddr, SEADROP_READ_ABI, provider);
+        const drop = await seaDrop.getPublicDrop(addr);
+
+        if (drop && drop.mintPrice !== undefined) {
+          _publicMintPrice = ethers.utils.formatEther(drop.mintPrice);
+          document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH';
+          document.getElementById('applyPublicBtn').disabled = false;
+          log("SeaDrop public price: " + _publicMintPrice + " ETH", "ok");
+        }
       }
-    } catch {}
-    // Try with seaDrop address param
-    if (!_publicMintPrice) {
-      for (const sdAddr of SEADROP_ADDRS) {
-        try {
-          const ct = new ethers.Contract(addr, [SEADROP_PUBLIC_DROP_ABI2], provider);
-          const drop = await ct.getPublicDrop(sdAddr);
-          if (drop && drop.mintPrice && !ethers.BigNumber.from(drop.mintPrice).isZero()) {
-            _publicMintPrice = ethers.utils.formatEther(drop.mintPrice);
-            document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH (SeaDrop)';
-            document.getElementById('applyPublicBtn').disabled = false;
-            log('SeaDrop getPublicDrop(seaDrop) mintPrice: ' + _publicMintPrice + ' ETH', 'ok');
-            break;
-          }
-        } catch {}
-      }
+    } catch (e) {
+      console.log(e);
     }
   }
 
@@ -993,14 +1012,14 @@ async function fetchMintPrice(autoApply = false) {
     try {
       const ct = new ethers.Contract(addr, [probe.abi], provider);
       const v  = await ct[probe.fn]();
-      if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+      if (ethers.BigNumber.isBigNumber(v)) {
         _wlMintPrice = ethers.utils.formatEther(v);
         document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH';
         document.getElementById('applyWLBtn').disabled = false;
         log('WL price via ' + probe.fn + '(): ' + _wlMintPrice + ' ETH', 'ok');
         break;
       }
-    } catch {}
+    } catch(e) { console.log(e); }
   }
 
   // ── 4. WL price per wallet address ────────────────────────────────────────
@@ -1010,14 +1029,14 @@ async function fetchMintPrice(autoApply = false) {
       try {
         const ct = new ethers.Contract(addr, [probe.abi], provider);
         const v  = await ct[probe.fn](walletAddr);
-        if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+        if (ethers.BigNumber.isBigNumber(v)) {
           _wlMintPrice = ethers.utils.formatEther(v);
           document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH ★wallet';
           document.getElementById('applyWLBtn').disabled = false;
           log('Wallet WL price via ' + probe.fn + '(address): ' + _wlMintPrice + ' ETH', 'ok');
           break;
         }
-      } catch {}
+      } catch(e) { console.log(e); }
     }
   }
 
@@ -1032,7 +1051,7 @@ async function fetchMintPrice(autoApply = false) {
         try {
           const ct = new ethers.Contract(addr, [probe.abi], provider);
           const v  = await ct[probe.fn](idx);
-          if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+          if (ethers.BigNumber.isBigNumber(v)) {
             const asEth = ethers.utils.formatEther(v);
             if (!_publicMintPrice || asEth !== _publicMintPrice) {
               _wlMintPrice = asEth;
@@ -1042,7 +1061,7 @@ async function fetchMintPrice(autoApply = false) {
               break;
             }
           }
-        } catch {}
+        } catch(e) { console.log(e); }
       }
       if (_wlMintPrice) break;
     }
@@ -1370,6 +1389,11 @@ async function detectABI() {
       result.innerHTML = '✓ Bytecode matched ' + allMatched.length + ' standard(s)<br>' + allMatched.map(s => '→ ' + s.fn + '() — ' + s.name).join('<br>');
       log('Best fn: ' + best.fn + ' | ' + allMatched.length + ' total match(es)', 'ok');
       btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+      // If mintSeaDrop was matched, force the SeaDrop price path immediately
+      const hasSeaDrop = allMatched.some(s => /seadrop/i.test(s.fn));
+      if (hasSeaDrop) {
+        log('mintSeaDrop detected — triggering SeaDrop price fetch automatically', 'info');
+      }
       fetchMintPrice(true);
       return;
     }
@@ -1580,7 +1604,7 @@ async function checkContract() {
           ? ethers.utils.formatEther(v) + ' ETH'
           : v.toString();
         log(`${c.label} = ${display}`, c.fn === 'paused' && v ? 'warn' : 'ok');
-      } catch {}
+      } catch(e) { console.log(e); }
     }
   } catch(e) { log('Inspect error: ' + e.message, 'err'); }
 }
