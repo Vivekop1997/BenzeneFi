@@ -1244,8 +1244,7 @@ async function detectABI() {
                       || mintFns.find(f => !/wl|whitelist|allowlist|presale|claim/i.test(f.name))
                       || mintFns[0] || allFns[0];
 
-          document.getElementById('mintAbi').value = '[' + abiStrings.join(',
-') + ']';
+          document.getElementById('mintAbi').value = '[' + abiStrings.join(', ') + ']';
           document.getElementById('mintFn').value  = bestFn.name;
           autoFillArgs(bestFn);
           result.className = 'abi-result visible';
