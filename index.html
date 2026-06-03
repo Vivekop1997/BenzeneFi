@@ -843,77 +843,162 @@ async function refreshGasNow() {
 });
 
 // ─── MINT PRICE FETCHER ──────────────────────────────────────────────────────
+// Public price probes (no args)
 const PRICE_PROBES = [
-  { fn: 'mintPrice',       abi: 'function mintPrice() view returns (uint256)' },
-  { fn: 'cost',            abi: 'function cost() view returns (uint256)' },
-  { fn: 'price',           abi: 'function price() view returns (uint256)' },
-  { fn: 'getPrice',        abi: 'function getPrice() view returns (uint256)' },
-  { fn: 'publicMintPrice', abi: 'function publicMintPrice() view returns (uint256)' },
-  { fn: 'MINT_PRICE',      abi: 'function MINT_PRICE() view returns (uint256)' },
-  { fn: 'salePrice',       abi: 'function salePrice() view returns (uint256)' },
+  { fn:'mintPrice',         abi:'function mintPrice() view returns (uint256)' },
+  { fn:'cost',              abi:'function cost() view returns (uint256)' },
+  { fn:'price',             abi:'function price() view returns (uint256)' },
+  { fn:'getPrice',          abi:'function getPrice() view returns (uint256)' },
+  { fn:'publicMintPrice',   abi:'function publicMintPrice() view returns (uint256)' },
+  { fn:'MINT_PRICE',        abi:'function MINT_PRICE() view returns (uint256)' },
+  { fn:'salePrice',         abi:'function salePrice() view returns (uint256)' },
+  { fn:'PUBLIC_MINT_PRICE', abi:'function PUBLIC_MINT_PRICE() view returns (uint256)' },
+  { fn:'mintCost',          abi:'function mintCost() view returns (uint256)' },
+  { fn:'tokenPrice',        abi:'function tokenPrice() view returns (uint256)' },
+  { fn:'nftPrice',          abi:'function nftPrice() view returns (uint256)' },
+  { fn:'mintFee',           abi:'function mintFee() view returns (uint256)' },
 ];
 
+// WL price probes (no args) — global WL price stored in contract
 const WL_PRICE_PROBES = [
-  { fn: 'whitelistPrice',   abi: 'function whitelistPrice() view returns (uint256)' },
-  { fn: 'presalePrice',     abi: 'function presalePrice() view returns (uint256)' },
-  { fn: 'allowlistPrice',   abi: 'function allowlistPrice() view returns (uint256)' },
-  { fn: 'wlPrice',          abi: 'function wlPrice() view returns (uint256)' },
-  { fn: 'WL_MINT_PRICE',    abi: 'function WL_MINT_PRICE() view returns (uint256)' },
-  { fn: 'preSalePrice',     abi: 'function preSalePrice() view returns (uint256)' },
-  { fn: 'privateMintPrice', abi: 'function privateMintPrice() view returns (uint256)' },
+  { fn:'whitelistPrice',   abi:'function whitelistPrice() view returns (uint256)' },
+  { fn:'presalePrice',     abi:'function presalePrice() view returns (uint256)' },
+  { fn:'allowlistPrice',   abi:'function allowlistPrice() view returns (uint256)' },
+  { fn:'wlPrice',          abi:'function wlPrice() view returns (uint256)' },
+  { fn:'WL_MINT_PRICE',    abi:'function WL_MINT_PRICE() view returns (uint256)' },
+  { fn:'preSalePrice',     abi:'function preSalePrice() view returns (uint256)' },
+  { fn:'privateMintPrice', abi:'function privateMintPrice() view returns (uint256)' },
+  { fn:'wlMintPrice',      abi:'function wlMintPrice() view returns (uint256)' },
+  { fn:'allowListPrice',   abi:'function allowListPrice() view returns (uint256)' },
+  { fn:'presaleCost',      abi:'function presaleCost() view returns (uint256)' },
+  { fn:'earlyMintPrice',   abi:'function earlyMintPrice() view returns (uint256)' },
+  { fn:'WHITELIST_PRICE',  abi:'function WHITELIST_PRICE() view returns (uint256)' },
+];
+
+// WL price probes that take wallet address (wallet-specific WL price)
+const WL_ADDR_PRICE_PROBES = [
+  { fn:'getMintPrice',         abi:'function getMintPrice(address wallet) view returns (uint256)' },
+  { fn:'priceForAddress',      abi:'function priceForAddress(address wallet) view returns (uint256)' },
+  { fn:'getAllowListMintPrice', abi:'function getAllowListMintPrice(address wallet) view returns (uint256)' },
+  { fn:'whitelistMintPrice',   abi:'function whitelistMintPrice(address wallet) view returns (uint256)' },
+  { fn:'mintPrice',            abi:'function mintPrice(address wallet) view returns (uint256)' },
+  { fn:'getPrice',             abi:'function getPrice(address wallet) view returns (uint256)' },
+];
+
+// SeaDrop ABI for getPublicDrop
+const SEADROP_PUBLIC_DROP_ABI = 'function getPublicDrop() view returns (tuple(uint80 mintPrice,uint48 startTime,uint48 endTime,uint16 maxTotalMintableByWallet,uint16 feeBps,bool restrictFeeRecipients))';
+const SEADROP_PUBLIC_DROP_ABI2 = 'function getPublicDrop(address seaDrop) view returns (tuple(uint80 mintPrice,uint48 startTime,uint48 endTime,uint16 maxTotalMintableByWallet,uint16 feeBps,bool restrictFeeRecipients))';
+const SEADROP_ADDRS = [
+  '0x00005EA00Ac477B1030CE78506496e8C2dE24bf5',
+  '0x0000a26b00c1F0DF003000390027140000fAa719',
 ];
 
 async function fetchMintPrice() {
   const addr = document.getElementById('contractAddr').value.trim();
   if (!addr || !provider) { log('Connect wallet and enter contract address first', 'err'); return; }
 
+  const walletAddr = wallet ? wallet.address : null;
   const btn = document.getElementById('fetchPriceBtn');
   const txt = document.getElementById('fetchPriceTxt');
   btn.disabled = true;
-  txt.textContent = '⟳ FETCHING PRICE...';
+  txt.textContent = '⧟ FETCHING PRICE...';
   _publicMintPrice = null;
   _wlMintPrice = null;
 
-  log('Probing contract for mint price functions...', 'info');
+  log('Probing contract for mint prices' + (walletAddr ? ' (wallet: ' + walletAddr.slice(0,10) + '...)' : '') + '...', 'info');
 
-  // Probe public price
+  // ── 1. Public price (no args) ──────────────────────────────────────────────
   for (const probe of PRICE_PROBES) {
     try {
-      const ct = new ethers.Contract(addr, [`${probe.abi}`], provider);
+      const ct = new ethers.Contract(addr, [probe.abi], provider);
       const v  = await ct[probe.fn]();
-      _publicMintPrice = ethers.utils.formatEther(v);
-      document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH';
-      document.getElementById('applyPublicBtn').disabled = false;
-      log(`Public price via ${probe.fn}(): ${_publicMintPrice} ETH`, 'ok');
-      break;
+      if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+        _publicMintPrice = ethers.utils.formatEther(v);
+        document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH';
+        document.getElementById('applyPublicBtn').disabled = false;
+        log('Public price via ' + probe.fn + '(): ' + _publicMintPrice + ' ETH', 'ok');
+        break;
+      }
     } catch {}
   }
 
-  // Probe WL price
+  // ── 2. SeaDrop getPublicDrop (for mintSeaDrop contracts) ──────────────────
+  if (!_publicMintPrice) {
+    try {
+      const ct = new ethers.Contract(addr, [SEADROP_PUBLIC_DROP_ABI], provider);
+      const drop = await ct.getPublicDrop();
+      if (drop && drop.mintPrice && !ethers.BigNumber.from(drop.mintPrice).isZero()) {
+        _publicMintPrice = ethers.utils.formatEther(drop.mintPrice);
+        document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH (SeaDrop)';
+        document.getElementById('applyPublicBtn').disabled = false;
+        log('SeaDrop getPublicDrop mintPrice: ' + _publicMintPrice + ' ETH', 'ok');
+      }
+    } catch {}
+    // Try with seaDrop address param
+    if (!_publicMintPrice) {
+      for (const sdAddr of SEADROP_ADDRS) {
+        try {
+          const ct = new ethers.Contract(addr, [SEADROP_PUBLIC_DROP_ABI2], provider);
+          const drop = await ct.getPublicDrop(sdAddr);
+          if (drop && drop.mintPrice && !ethers.BigNumber.from(drop.mintPrice).isZero()) {
+            _publicMintPrice = ethers.utils.formatEther(drop.mintPrice);
+            document.getElementById('detectedPublicPrice').textContent = _publicMintPrice + ' ETH (SeaDrop)';
+            document.getElementById('applyPublicBtn').disabled = false;
+            log('SeaDrop getPublicDrop(seaDrop) mintPrice: ' + _publicMintPrice + ' ETH', 'ok');
+            break;
+          }
+        } catch {}
+      }
+    }
+  }
+
+  // ── 3. WL price (no args, global) ─────────────────────────────────────────
   for (const probe of WL_PRICE_PROBES) {
     try {
-      const ct = new ethers.Contract(addr, [`${probe.abi}`], provider);
+      const ct = new ethers.Contract(addr, [probe.abi], provider);
       const v  = await ct[probe.fn]();
-      _wlMintPrice = ethers.utils.formatEther(v);
-      document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH';
-      document.getElementById('applyWLBtn').disabled = false;
-      log(`WL/Presale price via ${probe.fn}(): ${_wlMintPrice} ETH`, 'ok');
-      break;
+      if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+        _wlMintPrice = ethers.utils.formatEther(v);
+        document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH';
+        document.getElementById('applyWLBtn').disabled = false;
+        log('WL price via ' + probe.fn + '(): ' + _wlMintPrice + ' ETH', 'ok');
+        break;
+      }
     } catch {}
   }
 
-  // Show the price row
+  // ── 4. WL price per wallet address ────────────────────────────────────────
+  if (!_wlMintPrice && walletAddr) {
+    log('Checking wallet-specific WL price for ' + walletAddr.slice(0,10) + '...', 'info');
+    for (const probe of WL_ADDR_PRICE_PROBES) {
+      try {
+        const ct = new ethers.Contract(addr, [probe.abi], provider);
+        const v  = await ct[probe.fn](walletAddr);
+        if (v && ethers.BigNumber.isBigNumber(v) && !v.isZero()) {
+          _wlMintPrice = ethers.utils.formatEther(v);
+          document.getElementById('detectedWLPrice').textContent = _wlMintPrice + ' ETH ★wallet';
+          document.getElementById('applyWLBtn').disabled = false;
+          log('Wallet WL price via ' + probe.fn + '(address): ' + _wlMintPrice + ' ETH', 'ok');
+          break;
+        }
+      } catch {}
+    }
+  }
+
+  if (!_wlMintPrice && _publicMintPrice) {
+    log('No separate WL price — WL likely uses same price or proof-only gating', 'warn');
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   const row = document.getElementById('priceDetectRow');
+  row.style.display = 'block';
+  if (!_publicMintPrice) document.getElementById('detectedPublicPrice').textContent = 'not found';
+  if (!_wlMintPrice) { document.getElementById('detectedWLPrice').textContent = 'not found'; document.getElementById('applyWLBtn').disabled = true; }
+
   if (_publicMintPrice || _wlMintPrice) {
-    row.style.display = 'block';
-    if (!_publicMintPrice) document.getElementById('detectedPublicPrice').textContent = 'not found';
-    if (!_wlMintPrice)    { document.getElementById('detectedWLPrice').textContent = 'not found'; document.getElementById('applyWLBtn').disabled = true; }
     log('Price fetch complete — click USE to apply', 'ok');
   } else {
-    log('Could not detect price automatically — enter manually', 'warn');
-    row.style.display = 'block';
-    document.getElementById('detectedPublicPrice').textContent = 'not found';
-    document.getElementById('detectedWLPrice').textContent     = 'not found';
+    log('No price detected — may be free mint or price in mapping (check Etherscan)', 'warn');
   }
 
   txt.textContent = '⬡ FETCH MINT PRICE';
@@ -925,8 +1010,9 @@ function applyPrice(type) {
   if (!p) return;
   document.getElementById('mintPrice').value = p;
   document.getElementById('priceAutoTag').style.display = 'inline';
-  log(`Applied ${type === 'wl' ? 'WL' : 'public'} price: ${p} ETH`, 'ok');
+  log('Applied ' + (type === 'wl' ? 'WL' : 'public') + ' price: ' + p + ' ETH', 'ok');
 }
+
 
 async function pollBalance() {
   if (!provider || !wallet) return;
@@ -937,75 +1023,161 @@ async function pollBalance() {
   setTimeout(pollBalance, 30000);
 }
 
-// ─── KNOWN CONTRACT STANDARDS ────────────────────────────
+// ─── KNOWN CONTRACT STANDARDS (ordered by prevalence) ────────────────────────
+// Each entry: { name, sig (4-byte hex, no 0x), abi, fn, args, note }
+// sig = keccak256(signature).slice(0,4) in hex
 const KNOWN_STANDARDS = [
-  {
-    name: 'SeaDrop (OpenSea ERC721)',
-    // selector for mintSeaDrop(address,uint256) = 0x64869dad
-    sig: '64869dad',
-    abi: '["function mintSeaDrop(address minter, uint256 quantity) payable"]',
-    fn: 'mintSeaDrop',
-    args: (addr) => `${addr}, 1`,
-    note: 'OpenSea SeaDrop standard — pass your wallet address + quantity'
-  },
-  {
-    name: 'ERC721A Standard',
-    // mint(uint256) = 0xa0712d68
-    sig: 'a0712d68',
-    abi: '["function mint(uint256 quantity) payable"]',
-    fn: 'mint',
-    args: () => '',
-    note: 'ERC721A — qty-only mint, leave args blank'
-  },
-  {
-    name: 'Manifold (claim)',
-    // claim(uint32,uint32,uint32,address,bytes32[]) — common Manifold sig
-    sig: 'aad3ec96',
-    abi: '["function claim(uint32 creatorContractVersion, uint256 claimIndex, uint32 mintIndex, address mintFor, bytes32[] merkleProof) payable"]',
-    fn: 'claim',
-    args: (addr) => `1, 0, 0, ${addr}, []`,
-    note: 'Manifold claim — adjust claimIndex if needed'
-  },
-  {
-    name: 'publicMint(uint256)',
-    sig: 'e8a3d485', // publicMint(uint256)
-    abi: '["function publicMint(uint256 quantity) payable"]',
-    fn: 'publicMint',
-    args: () => '',
-    note: 'Public mint with quantity'
-  },
-  {
-    name: 'safeMint(address,uint256)',
-    sig: 'd204c45e',
-    abi: '["function safeMint(address to, uint256 quantity) payable"]',
-    fn: 'safeMint',
-    args: (addr) => `${addr}, 1`,
-    note: 'safeMint with address + quantity'
-  },
-  {
-    name: 'presaleMint(uint256)',
-    sig: '274601d6',
-    abi: '["function presaleMint(uint256 quantity) payable"]',
-    fn: 'presaleMint',
-    args: () => '',
-    note: 'Presale/whitelist mint'
-  },
-  {
-    name: 'whitelistMint(uint256,bytes32[])',
-    sig: 'e8a3d487',
-    abi: '["function whitelistMint(uint256 quantity, bytes32[] proof) payable"]',
-    fn: 'whitelistMint',
-    args: () => '1, []',
-    note: 'WL mint with merkle proof — replace [] with your proof array'
-  },
-  {
-    name: 'mintTo(address)',
-    sig: '449a52f8',
-    abi: '["function mintTo(address to) payable"]',
-    fn: 'mintTo',
-    args: (addr) => addr,
-    note: 'Simple mintTo with wallet address'
-  },
+  // ── ERC721A / most common public mints ──────────────────────────────────────
+  { name:'mint(uint256)',
+    sig:'a0712d68',
+    abi:'["function mint(uint256 quantity) payable"]',
+    fn:'mint', args:()=>'',
+    note:'ERC721A qty-only mint — leave args blank' },
+
+  { name:'mint()',
+    sig:'1249c58b',
+    abi:'["function mint() payable"]',
+    fn:'mint', args:()=>'',
+    note:'No-arg mint — leave args blank' },
+
+  { name:'mint(address,uint256)',
+    sig:'40c10f19',
+    abi:'["function mint(address to, uint256 quantity) payable"]',
+    fn:'mint', args:(a)=>`${a}, 1`,
+    note:'Mint to address with quantity' },
+
+  // ── mintTo variants ─────────────────────────────────────────────────────────
+  { name:'mintTo(address)',
+    sig:'449a52f8',
+    abi:'["function mintTo(address to) payable"]',
+    fn:'mintTo', args:(a)=>a,
+    note:'mintTo — pass your wallet address' },
+
+  { name:'mintTo(address,uint256)',
+    sig:'0a89b0c0',
+    abi:'["function mintTo(address to, uint256 quantity) payable"]',
+    fn:'mintTo', args:(a)=>`${a}, 1`,
+    note:'mintTo with qty' },
+
+  // ── publicMint variants ─────────────────────────────────────────────────────
+  { name:'publicMint(uint256)',
+    sig:'e8a3d485',
+    abi:'["function publicMint(uint256 quantity) payable"]',
+    fn:'publicMint', args:()=>'',
+    note:'Public mint with quantity' },
+
+  { name:'publicMint()',
+    sig:'4ef1f452',
+    abi:'["function publicMint() payable"]',
+    fn:'publicMint', args:()=>'',
+    note:'No-arg public mint' },
+
+  { name:'publicMint(address,uint256)',
+    sig:'c44cff61',
+    abi:'["function publicMint(address to, uint256 quantity) payable"]',
+    fn:'publicMint', args:(a)=>`${a}, 1`,
+    note:'publicMint with address + qty' },
+
+  // ── safeMint variants ───────────────────────────────────────────────────────
+  { name:'safeMint(address)',
+    sig:'40d097c3',
+    abi:'["function safeMint(address to) payable"]',
+    fn:'safeMint', args:(a)=>a,
+    note:'safeMint to address' },
+
+  { name:'safeMint(address,uint256)',
+    sig:'d204c45e',
+    abi:'["function safeMint(address to, uint256 quantity) payable"]',
+    fn:'safeMint', args:(a)=>`${a}, 1`,
+    note:'safeMint with address + qty' },
+
+  // ── WL / presale / allowlist mints ─────────────────────────────────────────
+  { name:'whitelistMint(uint256,bytes32[])',
+    sig:'e8a3d487',
+    abi:'["function whitelistMint(uint256 quantity, bytes32[] merkleProof) payable"]',
+    fn:'whitelistMint', args:()=>'1, []',
+    note:'WL mint — replace [] with your merkle proof array' },
+
+  { name:'whitelistMint(uint256)',
+    sig:'3ccfd60b',
+    abi:'["function whitelistMint(uint256 quantity) payable"]',
+    fn:'whitelistMint', args:()=>'',
+    note:'WL mint qty-only' },
+
+  { name:'allowlistMint(uint256,bytes32[])',
+    sig:'81e4822e',
+    abi:'["function allowlistMint(uint256 quantity, bytes32[] proof) payable"]',
+    fn:'allowlistMint', args:()=>'1, []',
+    note:'Allowlist mint — replace [] with your proof' },
+
+  { name:'presaleMint(uint256)',
+    sig:'274601d6',
+    abi:'["function presaleMint(uint256 quantity) payable"]',
+    fn:'presaleMint', args:()=>'',
+    note:'Presale/WL qty mint' },
+
+  { name:'presaleMint(uint256,bytes32[])',
+    sig:'7f00c7a6',
+    abi:'["function presaleMint(uint256 quantity, bytes32[] proof) payable"]',
+    fn:'presaleMint', args:()=>'1, []',
+    note:'Presale mint with merkle proof' },
+
+  { name:'mintAllowList(uint256,bytes32[])',
+    sig:'b48ab8b6',
+    abi:'["function mintAllowList(uint256 quantity, bytes32[] proof) payable"]',
+    fn:'mintAllowList', args:()=>'1, []',
+    note:'AllowList mint with proof' },
+
+  { name:'mintWL(uint256,bytes32[])',
+    sig:'2c1a1ee4',
+    abi:'["function mintWL(uint256 quantity, bytes32[] proof) payable"]',
+    fn:'mintWL', args:()=>'1, []',
+    note:'WL mint with proof' },
+
+  // ── SeaDrop / OpenSea ───────────────────────────────────────────────────────
+  { name:'mintSeaDrop(address,uint256)',
+    sig:'64869dad',
+    abi:'["function mintSeaDrop(address minter, uint256 quantity) payable"]',
+    fn:'mintSeaDrop', args:(a)=>`${a}, 1`,
+    note:'OpenSea SeaDrop — pass wallet address + qty' },
+
+  // ── Manifold ────────────────────────────────────────────────────────────────
+  { name:'claim(Manifold)',
+    sig:'aad3ec96',
+    abi:'["function claim(uint32 creatorContractVersion, uint256 claimIndex, uint32 mintIndex, address mintFor, bytes32[] merkleProof) payable"]',
+    fn:'claim', args:(a)=>`1, 0, 0, ${a}, []`,
+    note:'Manifold claim — adjust claimIndex if needed' },
+
+  // ── Other common patterns ───────────────────────────────────────────────────
+  { name:'buyTokens(uint256)',
+    sig:'d96a094a',
+    abi:'["function buyTokens(uint256 quantity) payable"]',
+    fn:'buyTokens', args:()=>'',
+    note:'buyTokens qty mint' },
+
+  { name:'purchase(uint256)',
+    sig:'efef39a1',
+    abi:'["function purchase(uint256 quantity) payable"]',
+    fn:'purchase', args:()=>'',
+    note:'purchase qty mint' },
+
+  { name:'mintPublic(address,uint256)',
+    sig:'6a4d2d5e',
+    abi:'["function mintPublic(address recipient, uint256 quantity) payable"]',
+    fn:'mintPublic', args:(a)=>`${a}, 1`,
+    note:'mintPublic with address + qty' },
+
+  { name:'mintPublic(uint256)',
+    sig:'fa153f7d',
+    abi:'["function mintPublic(uint256 quantity) payable"]',
+    fn:'mintPublic', args:()=>'',
+    note:'mintPublic qty-only' },
+
+  { name:'claim(uint256)',
+    sig:'379607f5',
+    abi:'["function claim(uint256 quantity) payable"]',
+    fn:'claim', args:()=>'',
+    note:'claim qty mint (non-Manifold)' },
 ];
 
 // ─── AUTO ABI DETECTION ──────────────────────────────────
@@ -1019,45 +1191,68 @@ async function detectABI() {
   const result = document.getElementById('abiResult');
 
   btn.disabled = true;
-  btnTxt.textContent = '⟳ DETECTING...';
+  btnTxt.textContent = '⧟ DETECTING...';
   result.className = 'abi-result';
   result.style.borderColor = '';
   result.style.background = '';
-  log(`Detecting contract type for ${addr}...`, 'info');
+  log('Detecting contract type for ' + addr + '...', 'info');
 
-  // STEP 1: Try verified ABI from block explorers
+  // STEP 1: Try verified ABI from block explorers (all networks in parallel)
   const explorerAPIs = [
-    { name: 'Ethereum', url: `https://api.etherscan.io/api?module=contract&action=getabi&address=${addr}` },
-    { name: 'Polygon',  url: `https://api.polygonscan.com/api?module=contract&action=getabi&address=${addr}` },
-    { name: 'Base',     url: `https://api.basescan.org/api?module=contract&action=getabi&address=${addr}` },
-    { name: 'Arbitrum', url: `https://api.arbiscan.io/api?module=contract&action=getabi&address=${addr}` },
-    { name: 'Optimism', url: `https://api-optimistic.etherscan.io/api?module=contract&action=getabi&address=${addr}` },
+    { name: 'Ethereum', url: 'https://api.etherscan.io/api?module=contract&action=getabi&address=' + addr },
+    { name: 'Polygon',  url: 'https://api.polygonscan.com/api?module=contract&action=getabi&address=' + addr },
+    { name: 'Base',     url: 'https://api.basescan.org/api?module=contract&action=getabi&address=' + addr },
+    { name: 'Arbitrum', url: 'https://api.arbiscan.io/api?module=contract&action=getabi&address=' + addr },
+    { name: 'Optimism', url: 'https://api-optimistic.etherscan.io/api?module=contract&action=getabi&address=' + addr },
+    { name: 'BNB',      url: 'https://api.bscscan.com/api?module=contract&action=getabi&address=' + addr },
   ];
 
   for (const api of explorerAPIs) {
     try {
-      const res  = await fetch(api.url);
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 5000);
+      const res  = await fetch(api.url, { signal: ctrl.signal });
+      clearTimeout(tid);
       const data = await res.json();
       if (data.status === '1' && data.result && !data.result.includes('not verified')) {
-        const abi     = JSON.parse(data.result);
+        let abi;
+        try { abi = JSON.parse(data.result); } catch { continue; }
+
+        // Grab ALL payable mint/claim/buy/purchase functions
         const mintFns = abi.filter(x =>
           x.type === 'function' &&
-          (x.name?.toLowerCase().includes('mint') || x.name?.toLowerCase().includes('claim'))
+          (x.stateMutability === 'payable' || x.payable === true) &&
+          /mint|claim|buy|purchase|presale|whitelist|allowlist/i.test(x.name || '')
         );
-        if (mintFns.length > 0) {
-          const abiStrings = mintFns.map(fn => {
-            const inputs  = fn.inputs.map(i => `${i.type} ${i.name}`).join(', ');
-            const payable = fn.stateMutability === 'payable' ? ' payable' : '';
-            return `"function ${fn.name}(${inputs})${payable}"`;
+        // Also non-payable named exactly mint/mintTo/safeMint
+        const extraFns = abi.filter(x =>
+          x.type === 'function' &&
+          x.stateMutability !== 'payable' &&
+          /^(mint|mintTo|safeMint)$/i.test(x.name || '') &&
+          !mintFns.find(m => m.name === x.name)
+        );
+        const allFns = [...mintFns, ...extraFns];
+
+        if (allFns.length > 0) {
+          const abiStrings = allFns.map(fn => {
+            const inputs  = fn.inputs.map(i => (i.internalType || i.type) + ' ' + i.name).join(', ');
+            const payable = (fn.stateMutability === 'payable' || fn.payable) ? ' payable' : '';
+            return '"function ' + fn.name + '(' + inputs + ')' + payable + '"';
           });
-          const bestFn = mintFns[0];
-          document.getElementById('mintAbi').value = `[${abiStrings.join(',\n')}]`;
+          // Pick best: prefer simple public mint over WL/claim
+          const bestFn = mintFns.find(f => /^(mint|publicMint|mintPublic)$/i.test(f.name))
+                      || mintFns.find(f => !/wl|whitelist|allowlist|presale|claim/i.test(f.name))
+                      || mintFns[0] || allFns[0];
+
+          document.getElementById('mintAbi').value = '[' + abiStrings.join(',
+') + ']';
           document.getElementById('mintFn').value  = bestFn.name;
           autoFillArgs(bestFn);
           result.className = 'abi-result visible';
-          result.innerHTML = `✓ Verified ABI on ${api.name}<br>${mintFns.map(f=>`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`).join('<br>')}`;
-          log(`Verified ABI from ${api.name}: ${mintFns.length} mint function(s)`, 'ok');
-          mintFns.forEach(f => log(`→ ${f.name}(${f.inputs.map(i=>i.type).join(', ')})`, 'info'));
+          result.innerHTML = '✓ Verified ABI on ' + api.name + '<br>' + allFns.map(f => '→ ' + f.name + '(' + f.inputs.map(i => i.type).join(', ') + ')').join('<br>');
+          log('Verified ABI from ' + api.name + ': ' + allFns.length + ' mint function(s)', 'ok');
+          allFns.forEach(f => log('→ ' + f.name + '(' + f.inputs.map(i => i.type).join(', ') + ')', 'info'));
+          log('Best fn selected: ' + bestFn.name, 'ok');
           btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
           fetchMintPrice();
           return;
@@ -1066,7 +1261,7 @@ async function detectABI() {
     } catch(e) { /* try next */ }
   }
 
-  // STEP 2: Bytecode fingerprinting — read raw bytecode and check for known function selectors
+  // STEP 2: Bytecode fingerprinting — collect ALL matching selectors
   log('Not verified on explorers — scanning bytecode selectors...', 'warn');
   try {
     const bytecode = await provider.getCode(addr);
@@ -1076,65 +1271,98 @@ async function detectABI() {
       return;
     }
 
-    log(`Bytecode retrieved (${bytecode.length} chars) — fingerprinting...`, 'info');
+    const bc = bytecode.toLowerCase();
+    log('Bytecode retrieved (' + Math.floor(bytecode.length/2-1) + ' bytes) — scanning all ' + KNOWN_STANDARDS.length + ' selectors...', 'info');
 
-    // Check each known standard's 4-byte selector in the bytecode
-    let matched = null;
+    // Find ALL matching standards
+    const allMatched = KNOWN_STANDARDS.filter(std => bc.includes(std.sig.toLowerCase()));
+
+    if (allMatched.length > 0) {
+      allMatched.forEach(std => log('✓ 0x' + std.sig + ' → ' + std.name, 'ok'));
+
+      // Build combined deduplicated ABI
+      const seenFns = new Set();
+      const combinedAbi = [];
+      allMatched.forEach(std => {
+        JSON.parse(std.abi).forEach(f => {
+          const match = f.match(/function (\w+)/);
+          if (match && !seenFns.has(match[1])) {
+            seenFns.add(match[1]);
+            combinedAbi.push(f);
+          }
+        });
+      });
+      document.getElementById('mintAbi').value = JSON.stringify(combinedAbi, null, 1);
+
+      // Pick best fn: prefer simple public mint over WL/SeaDrop
+      const best = allMatched.find(s => /^(mint|publicMint|mintPublic)$/i.test(s.fn))
+                || allMatched.find(s => !/wl|whitelist|allowlist|presale|seadrop/i.test(s.fn))
+                || allMatched[0];
+
+      document.getElementById('mintFn').value   = best.fn;
+      document.getElementById('mintArgs').value = best.args(wallet ? wallet.address : '0xYourAddress');
+
+      result.className = 'abi-result visible';
+      result.innerHTML = '✓ Bytecode matched ' + allMatched.length + ' standard(s)<br>' + allMatched.map(s => '→ ' + s.fn + '() — ' + s.name).join('<br>');
+      log('Best fn: ' + best.fn + ' | ' + allMatched.length + ' total match(es)', 'ok');
+      btn.disabled = false; btnTxt.textContent = '⬡ AUTO-DETECT ABI';
+      fetchMintPrice();
+      return;
+    }
+
+    // STEP 3: eth_call probe — send 0-value calls and check for revert vs bad-selector
+    log('No selector match — probing on-chain via eth_call...', 'warn');
+    let probeMatch = null;
+    const dummyAddr = wallet ? wallet.address : '0x0000000000000000000000000000000000000001';
+
     for (const std of KNOWN_STANDARDS) {
-      if (bytecode.toLowerCase().includes(std.sig.toLowerCase())) {
-        matched = std;
-        log(`Selector 0x${std.sig} found → ${std.name}`, 'ok');
+      try {
+        const iface   = new ethers.utils.Interface(JSON.parse(std.abi));
+        const fnFrag  = iface.getFunction(std.fn);
+        let callArgs  = [];
+        if (fnFrag.inputs.length > 0) {
+          const rawArgs = std.args(dummyAddr);
+          if (rawArgs) {
+            callArgs = rawArgs.split(',').map(a => {
+              a = a.trim();
+              if (a.startsWith('0x') && a.length === 42) return a;
+              if (a === '[]' || a === '') return [];
+              if (!isNaN(a)) return parseInt(a);
+              return a;
+            });
+          }
+        }
+        const data = iface.encodeFunctionData(std.fn, callArgs.length ? callArgs : fnFrag.inputs.map(() => 0));
+        await provider.call({ to: addr, data, value: ethers.BigNumber.from(0) });
+        probeMatch = std;
+        log('eth_call probe: ' + std.name + ' responded', 'ok');
         break;
+      } catch(e) {
+        const msg = (e.message || '').toLowerCase();
+        // revert/missing data means selector IS there, just wrong value/args
+        if (msg.includes('revert') || msg.includes('missing revert') || msg.includes('gas required')) {
+          probeMatch = std;
+          log('eth_call revert on ' + std.name + ' — selector confirmed', 'ok');
+          break;
+        }
+        // otherwise: function not present, try next
       }
     }
 
-    if (matched) {
-      document.getElementById('mintAbi').value = matched.abi;
-      document.getElementById('mintFn').value  = matched.fn;
-      const walletAddr = wallet ? wallet.address : '0xYourAddress';
-      const argsVal    = matched.args(walletAddr);
-      document.getElementById('mintArgs').value = argsVal;
+    if (probeMatch) {
+      document.getElementById('mintAbi').value  = probeMatch.abi;
+      document.getElementById('mintFn').value   = probeMatch.fn;
+      document.getElementById('mintArgs').value = probeMatch.args(wallet ? wallet.address : '0xYourAddress');
       result.className = 'abi-result visible';
-      result.innerHTML = `✓ Detected: <strong>${matched.name}</strong><br>→ ${matched.fn}(...)<br><small>${matched.note}</small>`;
-      log(`Contract type: ${matched.name}`, 'ok');
-      log(`Auto-filled ABI: ${matched.fn}`, 'ok');
-      if (argsVal) log(`Auto-filled args: ${argsVal}`, 'ok');
-      else log('Args: leave blank (qty-only)', 'info');
+      result.innerHTML = '✓ eth_call probe: <strong>' + probeMatch.name + '</strong><br><small>' + probeMatch.note + '</small>';
+      log('Probe matched: ' + probeMatch.name, 'ok');
+      fetchMintPrice();
     } else {
-      // STEP 3: Probe common function selectors live via eth_call
-      log('No known selector matched — probing live function calls...', 'warn');
-      const probes = [
-        { selector:'0xa0712d68', name:'mint(uint256)',              abi:'["function mint(uint256 quantity) payable"]',                          fn:'mint',          args:()=>'' },
-        { selector:'0x64869dad', name:'mintSeaDrop(address,uint256)',abi:'["function mintSeaDrop(address minter, uint256 quantity) payable"]',  fn:'mintSeaDrop',   args:(a)=>`${a}, 1` },
-        { selector:'0x1249c58b', name:'mint()',                     abi:'["function mint() payable"]',                                         fn:'mint',          args:()=>'' },
-        { selector:'0x40d097c3', name:'safeMint(address)',          abi:'["function safeMint(address to) payable"]',                           fn:'safeMint',      args:(a)=>a },
-        { selector:'0x449a52f8', name:'mintTo(address)',            abi:'["function mintTo(address to) payable"]',                             fn:'mintTo',        args:(a)=>a },
-        { selector:'0x274601d6', name:'presaleMint(uint256)',       abi:'["function presaleMint(uint256 quantity) payable"]',                  fn:'presaleMint',   args:()=>'' },
-      ];
-
-      let probeMatch = null;
-      for (const p of probes) {
-        if (bytecode.toLowerCase().includes(p.selector.slice(2).toLowerCase())) {
-          probeMatch = p;
-          break;
-        }
-      }
-
-      if (probeMatch) {
-        const walletAddr = wallet ? wallet.address : '0xYourAddress';
-        document.getElementById('mintAbi').value  = probeMatch.abi;
-        document.getElementById('mintFn').value   = probeMatch.fn;
-        document.getElementById('mintArgs').value = probeMatch.args(walletAddr);
-        result.className = 'abi-result visible';
-        result.innerHTML = `✓ Probe match: <strong>${probeMatch.name}</strong>`;
-        log(`Probe matched: ${probeMatch.name}`, 'ok');
-      } else {
-        result.className = 'abi-result visible';
-        result.style.borderColor = 'var(--red)';
-        result.style.background  = '#fde8e8';
-        result.innerHTML = `✗ Could not auto-detect.<br>Go to Etherscan → contract address → Contract tab → Copy ABI and paste it manually.`;
-        log('Auto-detect exhausted all methods. Paste ABI manually from Etherscan.', 'err');
-      }
+      result.className = 'abi-result visible';
+      result.style.borderColor = 'var(--red)';
+      result.style.background  = '#fde8e8';
+      result.innerHTML = '✗ Could not auto-detect.<br>Go to Etherscan → Contract tab → Copy ABI and paste manually.';
+      log('Auto-detect exhausted all 3 methods. Paste ABI from Etherscan manually.', 'err');
     }
   } catch(e) {
     log('Bytecode scan error: ' + e.message, 'err');
@@ -1143,6 +1371,7 @@ async function detectABI() {
   btn.disabled = false;
   btnTxt.textContent = '⬡ AUTO-DETECT ABI';
 }
+
 
 // Auto-fill args from a parsed ABI function object
 function autoFillArgs(fn) {
